@@ -12,42 +12,64 @@
             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-search text-slate-300"></i>
             </span>
-            <input type="text" class="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-full text-sm focus:ring-2 focus:ring-slate-200 focus:bg-white transition-all placeholder-slate-400" placeholder="Cari data...">
+            <input type="text" 
+                   @input.debounce.300ms="$dispatch('search-stok', $el.value)"
+                   class="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-full text-sm focus:ring-2 focus:ring-slate-200 focus:bg-white transition-all placeholder-slate-400" 
+                   placeholder="Cari stok...">
         </div>
 
-        <button @click="$dispatch('open-manage-modal')" 
-                class="px-4 py-2 rounded-lg border border-orange-200 text-primary bg-white text-xs font-bold hover:bg-orange-50 transition-all flex items-center gap-2">
+        <button @click="$dispatch('open-manage-modal')" class="px-4 py-2 rounded-lg border border-orange-200 text-primary bg-white text-xs font-bold hover:bg-orange-50 transition-all flex items-center gap-2">
             <i class="fas fa-tag"></i> KELOLA BARANG
         </button>
 
-        <button @click="$dispatch('open-supplier-modal')"
-                class="px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-bold hover:bg-slate-700 transition-all flex items-center gap-2">
+        <button @click="$dispatch('open-unit-modal')" class="px-4 py-2 rounded-lg border border-teal-200 text-teal-600 bg-white text-xs font-bold hover:bg-teal-50 transition-all flex items-center gap-2">
+            <i class="fas fa-ruler"></i> KELOLA SATUAN
+        </button>
+
+        <button @click="$dispatch('open-supplier-modal')" class="px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-bold hover:bg-slate-700 transition-all flex items-center gap-2">
             <i class="fas fa-truck"></i> SUPPLIER
         </button>
 
-        <button @click="$dispatch('open-add-stock-modal')"
-                class="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-500/30 flex items-center gap-2">
-            <i class="fas fa-plus"></i> TAMBAH STOK
+        <button @click="$dispatch('open-history-modal')" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-all flex items-center gap-2">
+            <i class="fas fa-history"></i> HISTORY
+        </button>
+
+        <button @click="$dispatch('open-add-stock-modal')" class="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-500/30 flex items-center gap-2">
+            <i class="fas fa-plus"></i> BELANJA STOK
         </button>
     </div>
 @endsection
 
 @section('content')
 
-    {{-- STATE MANAGEMENT UTAMA --}}
+    {{-- UPDATE 1: Menambahkan 'target_unit' di x-data agar Modal bisa membacanya --}}
     <div x-data="{ 
             showManageModal: false, 
+            showUnitModal: false,
             showSupplierModal: false,
             showAddStockModal: false,
-            showEditStockModal: false,
-            editData: {},
+            showBreakModal: false,
+            showHistoryModal: false,
+            breakItem: { id: '', name: '', unit: '', conversion: 1, target_unit: 'Pcs', target_unit_id: '', has_base_unit: false }, 
+            availableTargets: [], // <--- Array untuk menampung pilihan dropdown
+            selectedTargetId: '', // <--- ID yang dipilih user
             searchQuery: '',
-            searchSupplier: '' 
+            searchUnit: '',
+            searchSupplier: '',
+            inputHargaBeli: 0,
+            inputMargin: 20,
+            bisaDiecer: false,
+            inputKonversi: 1,
+            ecerMasterUnitId: '',
+            ecerMargin: 20
          }"
          @open-manage-modal.window="showManageModal = true"
+         @open-unit-modal.window="showUnitModal = true"
          @open-supplier-modal.window="showSupplierModal = true"
          @open-add-stock-modal.window="showAddStockModal = true"
-         @open-edit-stock-modal.window="showEditStockModal = true; editData = $event.detail">
+         @open-history-modal.window="showHistoryModal = true"
+         @search-stok.window="searchQuery = $event.detail"
+         @open-break-modal.window="showBreakModal = true; breakItem = $event.detail; selectedTargetId = $event.detail.target_unit_id || '';">
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-2xl p-6 border border-blue-100 shadow-sm flex flex-col justify-between">
@@ -59,17 +81,17 @@
             </div>
             <div class="bg-white rounded-2xl p-6 border border-red-100 shadow-sm flex flex-col justify-between">
                 <div class="flex justify-between items-start mb-2">
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Belum Lunas</p>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hutang ke Supplier</p>
                     <i class="fas fa-exclamation-triangle text-red-500 bg-red-50 p-2 rounded-lg"></i>
                 </div>
                 <h3 class="text-2xl font-bold text-slate-800">Rp {{ number_format($totalHutang, 0, ',', '.') }}</h3>
             </div>
             <div class="bg-white rounded-2xl p-6 border border-emerald-100 shadow-sm flex flex-col justify-between">
                 <div class="flex justify-between items-start mb-2">
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Barang Ready</p>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Varian Ready</p>
                     <i class="fas fa-box-open text-emerald-500 bg-emerald-50 p-2 rounded-lg"></i>
                 </div>
-                <h3 class="text-2xl font-bold text-slate-800">{{ $barangReady }} Item</h3>
+                <h3 class="text-2xl font-bold text-slate-800">{{ $barangReady }} Unit</h3>
             </div>
             <div class="bg-white rounded-2xl p-6 border border-orange-100 shadow-sm flex flex-col justify-between">
                 <div class="flex justify-between items-start mb-2">
@@ -83,7 +105,7 @@
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                 <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2">
-                    <i class="fas fa-th-large text-primary"></i> INVENTORI MASTER STOCK
+                    <i class="fas fa-th-large text-primary"></i> INVENTORI REAL-TIME
                 </h4>
             </div>
             <div class="overflow-x-auto w-full">
@@ -92,70 +114,105 @@
                         <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200">
                             <th class="px-6 py-4 whitespace-nowrap">No</th>
                             <th class="px-6 py-4 whitespace-nowrap">Nama Barang</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-center">Qty</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-center">Stok Awal</th>
-                            <th class="px-6 py-4 whitespace-nowrap">Harga Beli</th>
-                            <th class="px-6 py-4 whitespace-nowrap">Nominal</th>
+                            <th class="px-6 py-4 whitespace-nowrap">Satuan</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-center">Unit Ecer</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-center">Stok</th>
+                            <th class="px-6 py-4 whitespace-nowrap">HPP Terakhir</th>
                             <th class="px-6 py-4 whitespace-nowrap text-orange-500">Margin</th>
                             <th class="px-6 py-4 whitespace-nowrap text-green-600">Harga Jual</th>
-                            <th class="px-6 py-4 whitespace-nowrap">Supplier</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-center">Status</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-center">Aksi</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-blue-600">Harga Atas</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-center">Aksi / Status</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
-                        @forelse($stocks as $item)
-                        <tr class="hover:bg-slate-50/80 transition-colors group">
+                        @forelse($units as $item)
+                        
+                        {{-- UPDATE 2: Logika mencari nama satuan Eceran (Target) --}}
+                        @php
+                            // Cari barang lain yang induknya sama, tapi dia adalah Base Unit (Eceran)
+                            $baseUnit = $units->where('master_product_id', $item->master_product_id)
+                                              ->where('is_base_unit', true)
+                                              ->first();
+                            
+                            // Cari semua satuan lain untuk produk yang sama (selain item ini)
+                            $otherUnits = $units->where('master_product_id', $item->master_product_id)
+                                                ->where('id', '!=', $item->id)
+                                                ->values();
+                            
+                            // Jika ketemu base unit, ambil namanya
+                            $hasBaseUnit = $baseUnit ? true : false;
+                            $namaSatuanTujuan = $baseUnit && $baseUnit->masterUnit ? $baseUnit->masterUnit->nama : '';
+                            $targetMasterUnitId = $baseUnit ? $baseUnit->master_unit_id : '';
+                        @endphp
+
+                        <tr x-show="searchQuery === '' || '{{ strtolower($item->masterProduct->nama ?? '') }}'.includes(searchQuery.toLowerCase())" 
+                            class="hover:bg-slate-50/80 transition-colors group">
                             <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->iteration }}</td>
                             <td class="px-6 py-4 whitespace-nowrap font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center font-bold {{ $item->qty == 0 ? 'text-red-500' : 'text-slate-700' }}">{{ $item->qty }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center text-slate-400 text-xs">{{ $item->stok_awal }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">Rp {{ number_format($item->harga_beli, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap font-bold">Rp {{ number_format($item->nominal, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-orange-600 font-bold">{{ $item->margin }}%</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-green-600 font-bold">Rp {{ number_format($item->harga_jual, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500">{{ $item->supplier->nama ?? '-' }}</td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-bold text-slate-600">
+                                    {{ $item->masterUnit->nama ?? '-' }}
+                                </span>
+                            </td>
+
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                @if($item->status_pembayaran == 'Lunas')
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-600 border border-green-200"><i class="fas fa-check-circle"></i> Lunas</span>
+                                @if($item->is_base_unit)
+                                    <span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold border border-emerald-200 uppercase">Ya</span>
                                 @else
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-600 border border-red-200"><i class="fas fa-clock"></i> Belum</span>
+                                    <span class="px-2 py-1 bg-slate-100 text-slate-500 rounded text-[10px] font-bold border border-slate-200 uppercase">Tidak</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <div class="flex items-center justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                                    <button @click="$dispatch('open-edit-stock-modal', {
-                                        id: {{ $item->id }},
-                                        tanggal: '{{ $item->tanggal }}',
-                                        nomor_resi: '{{ $item->nomor_resi }}',
-                                        master_product_id: {{ $item->master_product_id }},
-                                        stok_awal: {{ $item->stok_awal }},
-                                        qty: {{ $item->qty }},
-                                        harga_beli: {{ $item->harga_beli }},
-                                        margin: {{ $item->margin }},
-                                        harga_atas: {{ $item->harga_atas }},
-                                        supplier_id: {{ $item->supplier_id }},
-                                        status_pembayaran: '{{ $item->status_pembayaran }}',
-                                        status_barang: '{{ $item->status_barang }}',
-                                        jatuh_tempo: '{{ $item->jatuh_tempo }}',
-                                        qty_kulak: {{ $item->qty_kulak }}
-                                    })" class="w-8 h-8 rounded-lg border border-slate-200 text-blue-500 hover:bg-blue-50 hover:border-blue-500 transition-all flex items-center justify-center shadow-sm">
-                                        <i class="fas fa-edit text-xs"></i>
-                                    </button>
 
-                                    <form action="{{ route('stok.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Hapus data stok ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="w-8 h-8 rounded-lg border border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-500 transition-all flex items-center justify-center shadow-sm">
-                                            <i class="fas fa-trash-alt text-xs"></i>
+                            <td class="px-6 py-4 whitespace-nowrap text-center font-bold {{ $item->stok == 0 ? 'text-red-500' : 'text-slate-700' }}">
+                                {{ $item->stok }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">Rp {{ number_format($item->harga_beli_terakhir, 0, ',', '.') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-orange-600 font-bold">{{ $item->margin }}%</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-green-600 font-bold">Rp {{ number_format($item->harga_jual, 0, ',', '.') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-blue-600 font-bold">Rp {{ number_format($item->harga_atas, 0, ',', '.') }}</td>
+                            
+                            {{-- UPDATE 3: Logika Tombol & Mengirim 'target_unit' --}}
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                @if($item->stok <= 0)
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">
+                                        Kosong
+                                    </span>
+
+                                @elseif(!$item->is_base_unit)
+                                    {{-- JIKA INI SATUAN BESAR (Pack/Dus) --}}
+                                    <div class="flex flex-col gap-2 items-center">
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
+                                            Ready
+                                        </span>
+                                        {{-- Tombol Buka Pack --}}
+                                        <button type="button"
+                                                @click="selectedTargetId = '{{ $targetMasterUnitId }}'; $dispatch('open-break-modal', { 
+                                                    id: '{{ $item->id }}', 
+                                                    master_product_id: '{{ $item->master_product_id }}',
+                                                    name: '{{ addslashes($item->masterProduct->nama ?? '-') }}',
+                                                    unit: '{{ $item->masterUnit->nama ?? '-' }}',
+                                                    conversion: {{ $item->nilai_konversi }},
+                                                    target_unit: '{{ $namaSatuanTujuan }}',
+                                                    target_unit_id: '{{ $targetMasterUnitId }}',
+                                                    has_base_unit: {{ $hasBaseUnit ? 'true' : 'false' }}
+                                                })"
+                                                class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-[10px] font-bold hover:bg-purple-200 border border-purple-200 flex items-center gap-1 transition-all shadow-sm">
+                                            <i class="fas fa-box-open"></i> BUKA {{ $item->masterUnit->nama ?? '-' }}
                                         </button>
-                                    </form>
-                                </div>
+                                    </div>
+
+                                @else
+                                    {{-- JIKA INI SATUAN KECIL (Eceran) --}}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-600 border border-green-100">
+                                        Ready ({{ $item->masterUnit->nama ?? '-' }})
+                                    </span>
+                                @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="11" class="px-6 py-10 text-center text-slate-400">Belum ada data stok.</td>
+                            <td colspan="9" class="px-6 py-10 text-center text-slate-400">Belum ada data stok. Klik "Belanja Stok" untuk memulai.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -163,349 +220,386 @@
             </div>
         </div>
 
-        {{-- ========================================== --}}
-        {{-- MODAL 1: KELOLA MASTER BARANG (KECIL)  --}}
-        {{-- ========================================== --}}
-        <div x-show="showManageModal" 
-             style="display: none;"
-             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center">
-            
-            <div @click.away="showManageModal = false"
-                 class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-                
-                <div class="bg-slate-800 px-6 py-4 flex items-center justify-between">
-                    <h3 class="text-white font-bold text-sm tracking-wide flex items-center gap-2">
-                        <i class="fas fa-tags text-orange-500"></i> KELOLA MASTER BARANG
-                    </h3>
-                    <button @click="showManageModal = false" class="text-slate-400 hover:text-white transition-colors"><i class="fas fa-times text-lg"></i></button>
-                </div>
+        {{-- MODAL KELOLA BARANG & SUPPLIER --}}
+        @include('stock.partials.modals_master') 
 
-                <div class="p-6">
-                    <form action="{{ route('master-product.store') }}" method="POST" class="flex gap-2 mb-6">
-                        @csrf
-                        <input type="text" name="nama" required 
-                               class="flex-1 bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 placeholder-slate-400" 
-                               placeholder="Input nama barang baru...">
-                        <button type="submit" class="p-2.5 bg-primary text-white rounded-lg hover:bg-orange-700 transition-colors shadow-lg shadow-orange-500/30">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </form>
-
-                    <div class="mb-3 relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-search text-slate-300 text-xs"></i></span>
-                        <input type="text" x-model="searchQuery" class="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs focus:ring-1 focus:ring-slate-200 uppercase" placeholder="CARI MASTER BARANG...">
-                    </div>
-
-                    <div class="max-h-64 overflow-y-auto pr-1 space-y-2 no-scrollbar">
-                        @foreach($masterProducts as $product)
-                            <div class="bg-slate-50 border border-slate-100 p-3 rounded-lg flex justify-between items-center group hover:bg-white hover:border-orange-200 transition-all"
-                                 x-show="'{{ strtoupper($product->nama) }}'.includes(searchQuery.toUpperCase())">
-                                <span class="text-xs font-bold text-slate-700 uppercase">{{ $product->nama }}</span>
-                                <form action="{{ route('master-product.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Hapus master barang ini? Data stok yang menggunakan barang ini tidak akan terpengaruh namun master barang akan terhapus jika tidak ada relasi.')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                                        <i class="fas fa-trash-alt text-[10px]"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- ========================================== --}}
-        {{-- MODAL 2: KELOLA SUPPLIER (KECIL)       --}}
-        {{-- ========================================== --}}
-        <div x-show="showSupplierModal" 
-             style="display: none;"
-             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center">
-
-            <div @click.away="showSupplierModal = false"
-                 class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-                
-                <div class="bg-slate-900 px-6 py-4 flex items-center justify-between">
-                    <h3 class="text-white font-bold text-sm tracking-wide flex items-center gap-2">
-                        <i class="fas fa-users text-blue-500"></i> KELOLA SUPPLIER
-                    </h3>
-                    <button @click="showSupplierModal = false" class="text-slate-400 hover:text-white transition-colors"><i class="fas fa-times text-lg"></i></button>
-                </div>
-
-                <div class="p-6">
-                    <form action="{{ route('supplier.store') }}" method="POST" class="flex gap-2 mb-6">
-                        @csrf
-                        <input type="text" name="nama" required 
-                               class="flex-1 bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 placeholder-slate-400" 
-                               placeholder="Nama supplier baru...">
-                        <button type="submit" class="p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </form>
-
-                    <div class="mb-3 relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-search text-slate-300 text-xs"></i></span>
-                        <input type="text" x-model="searchSupplier" class="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs focus:ring-1 focus:ring-slate-200 uppercase" placeholder="CARI SUPPLIER...">
-                    </div>
-
-                    <div class="max-h-64 overflow-y-auto pr-1 space-y-2 no-scrollbar">
-                        @foreach($suppliers as $supplier)
-                            <div class="bg-slate-50 border border-slate-100 p-3 rounded-lg flex justify-between items-center group hover:bg-white hover:border-blue-200 transition-all"
-                                 x-show="'{{ strtoupper($supplier->nama) }}'.includes(searchSupplier.toUpperCase())">
-                                <span class="text-xs font-bold text-slate-700 uppercase">{{ $supplier->nama }}</span>
-                                <form action="{{ route('supplier.destroy', $supplier->id) }}" method="POST" onsubmit="return confirm('Hapus supplier ini?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                                        <i class="fas fa-trash-alt text-[10px]"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- ========================================== --}}
-        {{-- MODAL 3: TAMBAH STOK BARU (BESAR)      --}}
-        {{-- ========================================== --}}
+        {{-- MODAL BELANJA STOK --}}
         <div x-show="showAddStockModal"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0"
              x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             style="display: none;"
-             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+             style="display: none;">
 
             <div @click.away="showAddStockModal = false"
-                 x-show="showAddStockModal"
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 scale-95"
-                 x-transition:enter-end="opacity-100 scale-100"
                  class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
                 
                 <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-start">
                     <div>
-                        <h3 class="text-xl font-bold text-slate-800">Tambah Stok Baru</h3>
-                        <p class="text-xs text-slate-500 mt-1">Masukkan detail barang ke master stock</p>
+                        <h3 class="text-xl font-bold text-slate-800">Form Belanja Stok (Kulakan)</h3>
+                        <p class="text-xs text-slate-500 mt-1">Stok akan bertambah dan riwayat pembelian tercatat.</p>
                     </div>
-                    <button @click="showAddStockModal = false" class="text-slate-400 hover:text-slate-600 transition-colors">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <button @click="showAddStockModal = false" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
                 </div>
 
                 <div class="p-8 overflow-y-auto custom-scrollbar">
                     <form id="addStockForm" action="{{ route('stok.store') }}" method="POST">
                         @csrf
                         
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                            
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Tanggal Input</label>
-                                <input type="date" name="tanggal" value="{{ date('Y-m-d') }}" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div class="col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <h4 class="text-xs font-bold text-primary uppercase mb-3">Data Faktur Supplier</h4>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Tanggal Faktur</label>
+                                        <input type="date" name="tanggal" value="{{ date('Y-m-d') }}" class="w-full bg-white border border-slate-300 rounded-lg text-sm p-2">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Supplier</label>
+                                        <select name="supplier_id" class="w-full bg-white border border-slate-300 rounded-lg text-sm p-2">
+                                            @foreach($suppliers as $sup)
+                                                <option value="{{ $sup->id }}">{{ $sup->nama }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">No. Resi / Nota</label>
+                                        <input type="text" name="nomor_resi" placeholder="INV-001" class="w-full bg-white border border-slate-300 rounded-lg text-sm p-2">
+                                    </div>
+                                </div>
                             </div>
+
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Nomor Resi</label>
-                                <input type="text" name="nomor_resi" placeholder="Contoh: INV/2026/100" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">🏷️ Nama Barang</label>
-                                <select name="master_product_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                                    <option value="" disabled selected>Pilih Barang...</option>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Barang (Master)</label>
+                                <select name="master_product_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
                                     @foreach($masterProducts as $product)
                                         <option value="{{ $product->id }}">{{ $product->nama }}</option>
                                     @endforeach
                                 </select>
                             </div>
-
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Stok Awal</label>
-                                <input type="number" name="stok_awal" value="0" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Qty Saat Ini</label>
-                                <input type="number" name="qty" value="0" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Harga Beli (Satuan)</label>
-                                <input type="number" name="harga_beli" value="0" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Margin (%)</label>
-                                <input type="number" name="margin" value="10" min="0" step="0.1" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Harga Atas (Limit)</label>
-                                <input type="number" name="harga_atas" value="0" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Supplier</label>
-                                <select name="supplier_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                                    <option value="" disabled selected>Pilih Supplier...</option>
-                                    @foreach($suppliers as $sup)
-                                        <option value="{{ $sup->id }}">{{ $sup->nama }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Status Pembayaran</label>
-                                <select name="status_pembayaran" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                                    <option value="Belum Lunas">Belum Lunas</option>
-                                    <option value="Lunas">Lunas</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Status Barang</label>
-                                <select name="status_barang" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                                    <option value="Ready">Ready</option>
-                                    <option value="Indent">Indent</option>
-                                    <option value="Kosong">Kosong</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Jatuh Tempo</label>
-                                <input type="date" name="jatuh_tempo" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Qty Kulak (Rencana Order)</label>
-                            <input type="number" name="qty_kulak" value="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                        </div>
-
-                    </form>
-                </div>
-
-            </div>
-        </div>
-
-        {{-- ========================================== --}}
-        {{-- MODAL 4: EDIT DATA STOK (BESAR)        --}}
-        {{-- ========================================== --}}
-        <div x-show="showEditStockModal"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             style="display: none;"
-             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-
-            <div @click.away="showEditStockModal = false"
-                 x-show="showEditStockModal"
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 scale-95"
-                 x-transition:enter-end="opacity-100 scale-100"
-                 class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
-                
-                <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-start">
-                    <div>
-                        <h3 class="text-xl font-bold text-slate-800">Edit Data Stok</h3>
-                        <p class="text-xs text-slate-500 mt-1">Perbarui informasi barang yang sudah ada</p>
-                    </div>
-                    <button @click="showEditStockModal = false" class="text-slate-400 hover:text-slate-600 transition-colors">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-
-                <div class="p-8 overflow-y-auto custom-scrollbar">
-                    <form :action="'{{ url('stok') }}/' + editData.id" method="POST" id="editStockForm">
-                        @csrf
-                        @method('PUT')
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                             
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Tanggal Input</label>
-                                <input type="date" name="tanggal" x-model="editData.tanggal" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Nomor Resi</label>
-                                <input type="text" name="nomor_resi" x-model="editData.nomor_resi" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">🏷️ Nama Barang</label>
-                                <select name="master_product_id" x-model="editData.master_product_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                                    @foreach($masterProducts as $product)
-                                        <option value="{{ $product->id }}">{{ $product->nama }}</option>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Satuan (Unit Utama)</label>
+                                <select name="master_unit_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
+                                    <option value="">-- Pilih Satuan --</option>
+                                    @foreach($allUnits as $unit)
+                                        <option value="{{ $unit->id }}">{{ $unit->nama }}</option>
                                     @endforeach
                                 </select>
+                                <p class="text-[9px] text-slate-400 mt-1">Pilih satuan utama (misal: Sak, Dus, Pack).</p>
+                            </div>
+
+                            <div class="flex items-center gap-3 pt-6">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="bisa_diecer" x-model="bisaDiecer" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                    <span class="ml-3 text-[10px] font-bold text-slate-500 uppercase">Apakah bisa diecer?</span>
+                                </label>
+                            </div>
+
+                            {{-- Form Eceran (Muncul jika dicentang) --}}
+                            <div x-show="bisaDiecer" x-transition class="col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">Satuan Eceran</label>
+                                    <select name="ecer_master_unit_id" x-model="ecerMasterUnitId" class="w-full bg-white border border-orange-200 rounded-lg text-sm p-2">
+                                        <option value="">-- Pilih Satuan Ecer --</option>
+                                        @foreach($allUnits as $unit)
+                                            <option value="{{ $unit->id }}">{{ $unit->nama }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">Isi per Kemasan</label>
+                                    <input type="number" name="nilai_konversi" x-model.number="inputKonversi" min="1" class="w-full bg-white border border-orange-200 rounded-lg text-sm p-2">
+                                    <p class="text-[9px] text-orange-400 mt-1">Misal: 1 Sak = 50 Kg, maka isi 50.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">HPP Eceran (Otomatis)</label>
+                                    <div class="w-full bg-orange-100/50 border border-orange-200 rounded-lg text-sm p-2 font-bold text-orange-700">
+                                        Rp <span x-text="Math.round(inputHargaBeli / (inputKonversi || 1)).toLocaleString('id-ID')"></span>
+                                    </div>
+                                    <input type="hidden" name="ecer_harga_beli" :value="Math.round(inputHargaBeli / (inputKonversi || 1))">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">Margin Ecer (%)</label>
+                                    <input type="number" name="ecer_margin" x-model.number="ecerMargin" class="w-full bg-white border border-orange-200 rounded-lg text-sm p-2">
+                                    <p class="text-[9px] text-slate-400 mt-1">
+                                        Jual Ecer: <span class="font-bold">Rp <span x-text="Math.round((inputHargaBeli / (inputKonversi || 1)) + ((inputHargaBeli / (inputKonversi || 1)) * ecerMargin / 100)).toLocaleString('id-ID')"></span></span>
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">Harga Atas Ecer</label>
+                                    <input type="number" name="ecer_harga_atas" placeholder="Rp 0" class="w-full bg-white border border-orange-200 rounded-lg text-sm p-2">
+                                    <p class="text-[9px] text-orange-400 mt-1">Opsional: Batas harga jual ecer.</p>
+                                </div>
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Stok Awal</label>
-                                <input type="number" name="stok_awal" x-model="editData.stok_awal" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Qty Saat Ini</label>
-                                <input type="number" name="qty" x-model="editData.qty" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Harga Beli (Satuan)</label>
-                                <input type="number" name="harga_beli" x-model="editData.harga_beli" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Jumlah Beli (Qty)</label>
+                                <input type="number" name="qty" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Margin (%)</label>
-                                <input type="number" name="margin" x-model="editData.margin" min="0" step="0.1" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Harga Atas (Limit)</label>
-                                <input type="number" name="harga_atas" x-model="editData.harga_atas" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Supplier</label>
-                                <select name="supplier_id" x-model="editData.supplier_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                                    @foreach($suppliers as $sup)
-                                        <option value="{{ $sup->id }}">{{ $sup->nama }}</option>
-                                    @endforeach
-                                </select>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Harga Beli Satuan</label>
+                                <input type="number" name="harga_beli" x-model.number="inputHargaBeli" placeholder="Rp 0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Status Pembayaran</label>
-                                <select name="status_pembayaran" x-model="editData.status_pembayaran" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                                    <option value="Belum Lunas">Belum Lunas</option>
-                                    <option value="Lunas">Lunas</option>
-                                </select>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Margin Keuntungan (%)</label>
+                                <input type="number" name="margin" x-model.number="inputMargin" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
+                                <p class="text-[10px] text-slate-400 mt-1">
+                                    Preview Harga Jual: <span class="font-bold">Rp <span x-text="Math.round(inputHargaBeli + (inputHargaBeli * inputMargin / 100)).toLocaleString('id-ID')"></span></span>
+                                </p>
                             </div>
+
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Status Barang</label>
-                                <select name="status_barang" x-model="editData.status_barang" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                                    <option value="Ready">Ready</option>
-                                    <option value="Indent">Indent</option>
-                                    <option value="Kosong">Kosong</option>
-                                </select>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Harga Atas (Batas Harga Jual)</label>
+                                <input type="number" name="harga_atas" placeholder="Rp 0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
+                                <p class="text-[9px] text-slate-400 mt-1">Opsional: Isi untuk menentukan batas atas harga jual.</p>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Jatuh Tempo</label>
-                                <input type="date" name="jatuh_tempo" x-model="editData.jatuh_tempo" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
+
+                            <div x-data="{ statusBayar: 'Lunas' }">
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Pembayaran</label>
+                                <select name="status_pembayaran" 
+                                        x-model="statusBayar"
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
+                                    <option value="Lunas">Lunas (Cash)</option>
+                                    <option value="Belum Lunas">Hutang (Tempo)</option>
+                                </select>
+                                
+                                {{-- Tanggal Jatuh Tempo (muncul jika Hutang) --}}
+                                <div x-show="statusBayar === 'Belum Lunas'" x-transition class="mt-3">
+                                    <label class="block text-[10px] font-bold text-red-400 uppercase mb-2">
+                                        <i class="fas fa-calendar-alt mr-1"></i> Jatuh Tempo
+                                    </label>
+                                    <input type="date" name="jatuh_tempo" 
+                                           class="w-full bg-red-50 border border-red-200 rounded-lg text-sm p-2.5 text-red-700 font-bold focus:ring-2 focus:ring-red-300">
+                                    <p class="text-[9px] text-red-400 mt-1">
+                                        <i class="fas fa-exclamation-circle"></i> Wajib diisi untuk pembayaran tempo/hutang.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-
-                        <div class="mb-6">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Qty Kulak (Rencana Order)</label>
-                            <input type="number" name="qty_kulak" x-model="editData.qty_kulak" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 p-2.5 focus:ring-primary focus:border-primary">
-                        </div>
-
                     </form>
                 </div>
 
                 <div class="px-8 py-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                    <button @click="showEditStockModal = false" class="px-5 py-2.5 rounded-lg text-slate-500 font-bold text-sm hover:bg-slate-200 transition-all">
-                        Batal
-                    </button>
-                    <button onclick="document.getElementById('editStockForm').submit()" class="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">
-                        Simpan Perubahan
-                    </button>
+                    <button @click="showAddStockModal = false" class="px-5 py-2.5 rounded-lg text-slate-500 font-bold text-sm hover:bg-slate-200 transition-all">Batal</button>
+                    <button onclick="document.getElementById('addStockForm').submit()" class="px-6 py-2.5 rounded-lg bg-primary text-white font-bold text-sm hover:bg-orange-700 shadow-lg shadow-orange-500/30 transition-all">Simpan Transaksi</button>
+                </div>
+            </div>
+        </div>
+
+        {{-- MODAL PECAH SATUAN (BREAK UNIT) --}}
+        <div x-show="showBreakModal"
+             style="display: none;"
+             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            
+            <div @click.away="showBreakModal = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div class="bg-purple-600 px-6 py-4 flex items-center justify-between">
+                    <h3 class="text-white font-bold text-sm tracking-wide flex items-center gap-2">
+                        <i class="fas fa-box-open"></i> KONVERSI STOK
+                    </h3>
+                    <button @click="showBreakModal = false" class="text-purple-200 hover:text-white"><i class="fas fa-times"></i></button>
                 </div>
 
+                <div class="p-6">
+                    <form action="{{ route('stok.break') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="product_unit_id" x-model="breakItem.id">
+
+                        <div class="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-6 text-center">
+                            <p class="text-xs text-purple-600 font-bold mb-1">MEMBUKA KEMASAN:</p>
+                            <h4 class="text-lg font-bold text-slate-800" x-text="breakItem.name"></h4>
+                            
+                            {{-- Tampilkan info konversi jika ada base unit --}}
+                            <template x-if="breakItem.has_base_unit && breakItem.target_unit">
+                                <span class="text-xs bg-white border border-purple-200 px-2 py-1 rounded text-purple-600 mt-2 inline-block">
+                                    1 <span x-text="breakItem.unit"></span> = <span x-text="breakItem.conversion"></span> <span x-text="breakItem.target_unit"></span>
+                                </span>
+                            </template>
+                            
+                            {{-- Tampilkan peringatan jika tidak ada base unit --}}
+                            <template x-if="!breakItem.has_base_unit">
+                                <span class="text-xs bg-yellow-50 border border-yellow-200 px-2 py-1 rounded text-yellow-700 mt-2 inline-block">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i> Pilih satuan tujuan di bawah
+                                </span>
+                            </template>
+                        </div>
+
+                        {{-- Target Konversi Otomatis --}}
+                        <div class="mb-6" x-show="breakItem.has_base_unit">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">
+                                Dikonversi Menjadi (Satuan Ecer):
+                            </label>
+                            <div class="bg-slate-100 border border-slate-200 rounded-lg p-3 flex items-center justify-between">
+                                <span class="text-sm font-bold text-slate-700" x-text="breakItem.target_unit"></span>
+                                <input type="hidden" name="target_master_unit_id" x-model="selectedTargetId">
+                                <span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold uppercase">Otomatis</span>
+                            </div>
+                        </div>
+
+                        {{-- Dropdown pilih satuan tujuan (Hanya jika belum ada base unit) --}}
+                        <div class="mb-6" x-show="!breakItem.has_base_unit">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">
+                                Satuan Tujuan Konversi:
+                            </label>
+                            
+                            {{-- Dropdown dari Master Units --}}
+                            <select name="target_master_unit_id" x-model="selectedTargetId" 
+                                    @change="
+                                        let opt = $el.options[$el.selectedIndex];
+                                        breakItem.target_unit = opt.text;
+                                    "
+                                    class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-purple-300 focus:border-purple-400">
+                                <option value="">-- Pilih Satuan Tujuan --</option>
+                                @foreach($allUnits as $unit)
+                                    <option value="{{ $unit->id }}">{{ $unit->nama }}</option>
+                                @endforeach
+                            </select>
+                            
+                            <p class="text-[9px] text-slate-400 mt-1">
+                                <i class="fas fa-info-circle"></i> Satuan ecer belum terdeteksi. Pilih secara manual.
+                            </p>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">
+                                Jumlah <span x-text="breakItem.unit"></span> yang dibuka:
+                            </label>
+                            <div class="flex items-center gap-3">
+                                <input type="number" name="qty_to_break" x-ref="qtyInput" value="1" min="1" 
+                                       @input="$refs.resultQty.textContent = $event.target.value * breakItem.conversion"
+                                       class="flex-1 bg-white border border-slate-300 rounded-lg p-2.5 text-center font-bold">
+                                <i class="fas fa-arrow-right text-slate-300"></i>
+                                <div class="flex-1 bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-center text-slate-500 text-sm">
+                                    Menjadi 
+                                    <strong x-ref="resultQty" class="text-green-600 text-lg" x-text="1 * breakItem.conversion"></strong> 
+                                    <span x-text="breakItem.target_unit || 'unit'" class="font-bold"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" 
+                                :disabled="!selectedTargetId"
+                                :class="selectedTargetId ? 'bg-purple-600 hover:bg-purple-700' : 'bg-slate-300 cursor-not-allowed'"
+                                class="w-full py-3 text-white font-bold rounded-xl shadow-lg transition-all">
+                            <i class="fas fa-exchange-alt mr-2"></i> PROSES KONVERSI
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- MODAL HISTORY BELANJA --}}
+        <div x-show="showHistoryModal"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             style="display: none;"
+             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            
+            <div @click.away="showHistoryModal = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="bg-indigo-600 px-6 py-4 flex items-center justify-between">
+                    <h3 class="text-white font-bold text-sm tracking-wide flex items-center gap-2">
+                        <i class="fas fa-history"></i> HISTORY BELANJA / KULAKAN
+                    </h3>
+                    <button @click="showHistoryModal = false" class="text-indigo-200 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="p-6 overflow-y-auto custom-scrollbar">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200">
+                                    <th class="px-4 py-3 whitespace-nowrap">No</th>
+                                    <th class="px-4 py-3 whitespace-nowrap">Tanggal</th>
+                                    <th class="px-4 py-3 whitespace-nowrap">No. Resi</th>
+                                    <th class="px-4 py-3 whitespace-nowrap">Supplier</th>
+                                    <th class="px-4 py-3 whitespace-nowrap">Barang</th>
+                                    <th class="px-4 py-3 whitespace-nowrap text-center">Qty</th>
+                                    <th class="px-4 py-3 whitespace-nowrap">Harga Satuan</th>
+                                    <th class="px-4 py-3 whitespace-nowrap">Total</th>
+                                    <th class="px-4 py-3 whitespace-nowrap text-center">Status</th>
+                                    <th class="px-4 py-3 whitespace-nowrap">Jatuh Tempo</th>
+                                    <th class="px-4 py-3 whitespace-nowrap text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
+                                @forelse($purchases as $purchase)
+                                    @foreach($purchase->purchaseDetails as $detail)
+                                    <tr class="hover:bg-slate-50/80 transition-colors">
+                                        <td class="px-4 py-3 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->parent->iteration }}.{{ $loop->iteration }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-xs">{{ \Carbon\Carbon::parse($purchase->tanggal)->format('d/m/Y') }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap font-mono text-xs text-indigo-600">{{ $purchase->nomor_resi }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap font-bold">{{ $purchase->supplier->nama ?? '-' }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="font-bold">{{ $detail->productUnit->masterProduct->nama ?? '-' }}</span>
+                                            <span class="text-xs text-slate-400">({{ $detail->productUnit->masterUnit->nama ?? '-' }})</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-center font-bold">{{ $detail->qty }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap">Rp {{ number_format($detail->harga_beli_satuan, 0, ',', '.') }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap font-bold text-slate-800">Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                                            @if($purchase->status_pembayaran == 'Lunas')
+                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-600 border border-green-100">
+                                                    <i class="fas fa-check-circle"></i> Lunas
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">
+                                                    <i class="fas fa-clock"></i> Belum Lunas
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-xs text-center font-bold">
+                                            {{ $purchase->status_pembayaran == 'Lunas' ? '-' : ($purchase->jatuh_tempo ? \Carbon\Carbon::parse($purchase->jatuh_tempo)->format('d/m/Y') : '-') }}
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                                            @if($purchase->status_pembayaran == 'Belum Lunas')
+                                                <form action="{{ route('purchase.pay', $purchase->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin melunasi transaksi ini secara manual?')">
+                                                    @csrf
+                                                    @method('PUT')
+                                                    <button type="submit" class="p-1 px-2 bg-green-500 text-white rounded text-[10px] font-bold hover:bg-green-600 transition-all flex items-center gap-1 mx-auto">
+                                                        <i class="fas fa-hand-holding-usd"></i> LUNAS
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <span class="text-slate-300"><i class="fas fa-check-double text-xs"></i></span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                @empty
+                                <tr>
+                                    <td colspan="11" class="px-4 py-10 text-center text-slate-400">Belum ada history pembelian.</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Summary --}}
+                    @if($purchases->count() > 0)
+                    <div class="mt-6 grid grid-cols-3 gap-4">
+                        <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                            <p class="text-[10px] font-bold text-indigo-400 uppercase">Total Transaksi</p>
+                            <p class="text-xl font-bold text-indigo-600">{{ $purchases->count() }}</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-xl border border-green-100">
+                            <p class="text-[10px] font-bold text-green-400 uppercase">Total Lunas</p>
+                            <p class="text-xl font-bold text-green-600">Rp {{ number_format($purchases->where('status_pembayaran', 'Lunas')->sum('total_nominal'), 0, ',', '.') }}</p>
+                        </div>
+                        <div class="bg-red-50 p-4 rounded-xl border border-red-100">
+                            <p class="text-[10px] font-bold text-red-400 uppercase">Total Hutang</p>
+                            <p class="text-xl font-bold text-red-600">Rp {{ number_format($purchases->where('status_pembayaran', 'Belum Lunas')->sum('total_nominal'), 0, ',', '.') }}</p>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                    <button @click="showHistoryModal = false" class="px-5 py-2.5 rounded-lg text-slate-500 font-bold text-sm hover:bg-slate-200 transition-all">Tutup</button>
+                </div>
             </div>
         </div>
 
@@ -515,8 +609,15 @@
     @if(session('success'))
         <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" 
              class="fixed bottom-5 right-5 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-bold flex items-center gap-3 z-50">
-            <i class="fas fa-check-circle"></i>
-            {{ session('success') }}
+            <i class="fas fa-check-circle"></i> {{ session('success') }}
+        </div>
+    @endif
+
+    {{-- ALERT ERROR --}}
+    @if(session('error'))
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" 
+             class="fixed bottom-5 right-5 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg text-sm font-bold flex items-center gap-3 z-50">
+            <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
         </div>
     @endif
 

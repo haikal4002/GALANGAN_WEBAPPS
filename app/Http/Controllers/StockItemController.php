@@ -2,190 +2,358 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StockItem;
 use App\Models\MasterProduct;
+use App\Models\ProductUnit;
+use App\Models\Purchase;
+use App\Models\PurchaseDetail;
 use App\Models\Supplier;
+use App\Models\Cashflow;
+use App\Models\TransactionCode;
+use App\Models\MasterUnit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class StockItemController extends Controller
 {
     public function index()
     {
-        // Ambil data stok dengan relasi produk dan supplier
-        // Urutkan dari yang terbaru
-        $stocks = StockItem::with(['masterProduct', 'supplier'])
-            ->latest('tanggal')
+        // 1. Get Inventory Data
+        $units = ProductUnit::with(['masterProduct', 'masterUnit']) // Load MasterUnit relation
+            ->orderBy('updated_at', 'desc')
             ->get();
 
-        // Hitung Data untuk Kartu Metrik (Sama seperti dashboard)
-        $totalAset = $stocks->sum('nominal'); // Total uang belanja stok
-        // Asumsi hitung yang belum lunas
-        $totalHutang = $stocks->where('status_pembayaran', '!=', 'Lunas')->sum('nominal');
-        $barangReady = $stocks->where('qty', '>', 0)->count();
-        $avgMargin = $stocks->avg('margin');
+        // 2. Calculate Metrics
+        $totalAset = $units->sum(function ($unit) {
+            return $unit->stok * $unit->harga_beli_terakhir;
+        });
 
+        $totalHutang = Purchase::where('status_pembayaran', 'Belum Lunas')->sum('total_nominal');
+        $barangReady = $units->where('stok', '>', 0)->count();
+        $avgMargin = $units->avg('margin');
+
+        // 3. Data for Dropdowns
         $masterProducts = MasterProduct::orderBy('nama', 'asc')->get();
-
         $suppliers = Supplier::orderBy('nama', 'asc')->get();
+        $allUnits = MasterUnit::withCount('productUnits')->orderBy('nama', 'asc')->get(); // For the unit dropdown
 
-        return view('stock.index', compact('stocks', 'totalAset', 'totalHutang', 'barangReady', 'avgMargin', 'masterProducts', 'suppliers'));
+        // 4. Get Purchase History
+        $purchases = Purchase::with(['supplier', 'purchaseDetails.productUnit.masterProduct', 'purchaseDetails.productUnit.masterUnit'])
+            ->orderBy('tanggal', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('stock.index', compact(
+            'units',
+            'allUnits',
+            'totalAset',
+            'totalHutang',
+            'barangReady',
+            'avgMargin',
+            'masterProducts',
+            'suppliers',
+            'purchases'
+        ));
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'tanggal' => 'required|date',
-            'nomor_resi' => 'required|string|max:255',
-            'master_product_id' => 'required|exists:master_products,id',
-            'stok_awal' => 'required|integer|min:0',
-            'qty' => 'required|integer|min:0', // Qty Saat Ini
-            'harga_beli' => 'required|numeric|min:0',
-            'margin' => 'required|numeric|min:0',
-            'harga_atas' => 'nullable|numeric|min:0',
-            'supplier_id' => 'required|exists:suppliers,id',
-            'status_pembayaran' => 'required|in:Lunas,Belum Lunas',
-            'status_barang' => 'required|string',
-            'jatuh_tempo' => 'nullable|date',
-            'qty_kulak' => 'nullable|integer|min:0',
-        ]);
-
-        // Rumus: Harga Beli + (Harga Beli * Margin / 100)
-        $hargaJual = $request->harga_beli + ($request->harga_beli * $request->margin / 100);
-
-        // Hitung Nominal (Total Aset barang ini)
-        $nominal = $request->qty * $request->harga_beli;
-
-        // Simpan ke Database
-        StockItem::create([
-            'tanggal' => $request->tanggal,
-            'nomor_resi' => $request->nomor_resi,
-            'master_product_id' => $request->master_product_id,
-            'stok_awal' => $request->stok_awal,
-            'qty' => $request->qty,
-            'harga_beli' => $request->harga_beli,
-            'nominal' => $nominal,
-            'margin' => $request->margin,
-            'harga_jual' => $hargaJual,
-            'harga_atas' => $request->harga_atas ?? 0,
-            'supplier_id' => $request->supplier_id,
-            'status_pembayaran' => $request->status_pembayaran,
-            'status_barang' => $request->status_barang,
-            'jatuh_tempo' => $request->jatuh_tempo,
-            'qty_kulak' => $request->qty_kulak ?? 0,
-        ]);
-
-        return redirect()->back()->with('success', 'Data stok berhasil ditambahkan!');
-    }
-
-    public function update(Request $request, $id)
-    {
-        $request->validate([
-            'tanggal' => 'required|date',
-            'nomor_resi' => 'required|string|max:255',
-            'master_product_id' => 'required|exists:master_products,id',
-            'stok_awal' => 'required|integer|min:0',
-            'qty' => 'required|integer|min:0',
-            'harga_beli' => 'required|numeric|min:0',
-            'margin' => 'required|numeric|min:0',
-            'harga_atas' => 'nullable|numeric|min:0',
-            'supplier_id' => 'required|exists:suppliers,id',
-            'status_pembayaran' => 'required|in:Lunas,Belum Lunas',
-            'status_barang' => 'required|string',
-            'jatuh_tempo' => 'nullable|date',
-            'qty_kulak' => 'nullable|integer|min:0',
-        ]);
-
-        $stock = StockItem::findOrFail($id);
-
-        $hargaJual = $request->harga_beli + ($request->harga_beli * $request->margin / 100);
-        $nominal = $request->qty * $request->harga_beli;
-
-        $stock->update([
-            'tanggal' => $request->tanggal,
-            'nomor_resi' => $request->nomor_resi,
-            'master_product_id' => $request->master_product_id,
-            'stok_awal' => $request->stok_awal,
-            'qty' => $request->qty,
-            'harga_beli' => $request->harga_beli,
-            'nominal' => $nominal,
-            'margin' => $request->margin,
-            'harga_jual' => $hargaJual,
-            'harga_atas' => $request->harga_atas ?? 0,
-            'supplier_id' => $request->supplier_id,
-            'status_pembayaran' => $request->status_pembayaran,
-            'status_barang' => $request->status_barang,
-            'jatuh_tempo' => $request->jatuh_tempo,
-            'qty_kulak' => $request->qty_kulak ?? 0,
-        ]);
-
-        return redirect()->back()->with('success', 'Data stok berhasil diperbarui!');
-    }
-
-    public function destroy($id)
-    {
-        $stock = StockItem::findOrFail($id);
-
-        // Cek jika sudah ada penjualan terkait (SalesLog)
-        if ($stock->salesLogs()->count() > 0) {
-            return redirect()->back()->with('error', 'Gagal menghapus! Barang ini sudah memiliki riwayat penjualan.');
-        }
-
-        $stock->delete();
-        return redirect()->back()->with('success', 'Data stok berhasil dihapus!');
-    }
-
+    // Store Master Product (No changes needed)
     public function storeMasterProduct(Request $request)
     {
-        $request->validate([
-            'nama' => 'required|string|unique:master_products,nama|max:255'
-        ]);
-        MasterProduct::create([
-            'nama' => strtoupper($request->nama)
-        ]);
+        $request->validate(['nama' => 'required|string|unique:master_products,nama|max:255']);
+        MasterProduct::create(['nama' => strtoupper($request->nama)]);
         return redirect()->back()->with('success', 'Master Barang berhasil ditambahkan!');
     }
 
-    public function destroyMasterProduct($id)
+    // Store Master Unit
+    public function storeMasterUnit(Request $request)
     {
-        $product = MasterProduct::findOrFail($id);
-
-        // Cek apakah barang sudah digunakan di stok
-        if ($product->stockItems()->count() > 0) {
-            return redirect()->back()->with('error', 'Gagal menghapus! Barang ini sudah memiliki riwayat stok.');
-        }
-
-        $product->delete();
-        return redirect()->back()->with('success', 'Master Barang berhasil dihapus!');
+        $request->validate(['nama' => 'required|string|unique:master_units,nama|max:255']);
+        MasterUnit::create(['nama' => strtoupper($request->nama)]);
+        return redirect()->back()->with('success', 'Master Satuan berhasil ditambahkan!');
     }
 
+    // Update Master Unit
+    public function updateMasterUnit(Request $request, $id)
+    {
+        $request->validate(['nama' => 'required|string|unique:master_units,nama,' . $id . '|max:255']);
+        $unit = MasterUnit::findOrFail($id);
+        $unit->update(['nama' => strtoupper($request->nama)]);
+        return redirect()->back()->with('success', 'Master Satuan berhasil diperbarui!');
+    }
+
+    // Destroy Master Unit
+    public function destroyMasterUnit($id)
+    {
+        $unit = MasterUnit::findOrFail($id);
+
+        // Cek apakah sudah digunakan di product_units
+        $isUsed = ProductUnit::where('master_unit_id', $id)->exists();
+
+        if ($isUsed) {
+            return redirect()->back()->with('error', 'Satuan tidak bisa dihapus karena sudah digunakan dalam data stok!');
+        }
+
+        $unit->delete();
+        return redirect()->back()->with('success', 'Master Satuan berhasil dihapus!');
+    }
+
+    // Melunasi Pembelian (Manual)
+    public function markAsPaid($id)
+    {
+        DB::transaction(function () use ($id) {
+            $purchase = Purchase::with('purchaseDetails.productUnit.masterProduct')->findOrFail($id);
+
+            if ($purchase->status_pembayaran == 'Lunas') {
+                return;
+            }
+
+            // 1. Update Status Purchase
+            $purchase->update([
+                'status_pembayaran' => 'Lunas'
+            ]);
+
+            // 2. Pencatatan Cashflow (Keluar)
+            $codeKeluar = TransactionCode::where('code', 'OUT-PURCHASE')->first();
+
+            // Generate keterangan dari detail barang
+            $items = $purchase->purchaseDetails->map(function ($d) {
+                return ($d->productUnit->masterProduct->nama ?? 'Barang') . " (x" . $d->qty . ")";
+            })->implode(', ');
+
+            Cashflow::create([
+                'tanggal' => now(), // Saat pelunasan dilakukan
+                'transaction_code_id' => $codeKeluar ? $codeKeluar->id : 1,
+                'keterangan' => "Pelunasan: " . $items . " [Nota: " . $purchase->nomor_resi . "]",
+                'debit' => 0,
+                'kredit' => $purchase->total_nominal
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Transaksi berhasil dilunasi!');
+    }
+
+    // Store Supplier (No changes needed)
     public function storeSupplier(Request $request)
     {
         $request->validate([
-            'nama' => 'required|string|unique:suppliers,nama|max:255'
+            'nama' => 'required|string|unique:suppliers,nama|max:255',
+            'kontak' => 'nullable|string|max:50',
+            'alamat' => 'nullable|string|max:255',
         ]);
 
-        // Kita simpan Nama saja sesuai desain Quick Add
-        // Pastikan kolom kontak & alamat di database 'nullable' atau beri nilai default '-'
         Supplier::create([
             'nama' => strtoupper($request->nama),
-            'kontak' => '-', // Default karena form hanya input nama
-            'alamat' => '-'  // Default karena form hanya input nama
+            'kontak' => $request->kontak ?? '-',
+            'alamat' => $request->alamat ?? '-'
         ]);
 
         return redirect()->back()->with('success', 'Supplier berhasil ditambahkan!');
     }
 
-    public function destroySupplier($id)
+    // --- STORE METHOD (UPDATED FOR MASTER UNITS) ---
+    public function store(Request $request)
     {
-        $supplier = Supplier::findOrFail($id);
+        // Validasi Input
+        $request->validate([
+            'tanggal' => 'required|date',
+            'nomor_resi' => 'required|string',
+            'supplier_id' => 'required|exists:suppliers,id',
+            'master_product_id' => 'required|exists:master_products,id',
+            'master_unit_id' => 'required|exists:master_units,id',
+            'qty' => 'required|integer|min:1',
+            'harga_beli' => 'required|numeric|min:0',
+            'margin' => 'required|numeric|min:0',
+            'harga_atas' => 'nullable|numeric|min:0',
+            'status_pembayaran' => 'required|in:Lunas,Belum Lunas',
+            'jatuh_tempo' => 'nullable|date',
+            'nilai_konversi' => 'nullable|integer|min:1',
+            'ecer_master_unit_id' => 'required_if:bisa_diecer,on|nullable|exists:master_units,id',
+            'ecer_margin' => 'nullable|numeric|min:0',
+            'ecer_harga_atas' => 'nullable|numeric|min:0',
+        ]);
 
-        // Cek apakah supplier sudah digunakan di stok
-        if ($supplier->stockItems()->count() > 0) {
-            return redirect()->back()->with('error', 'Gagal menghapus! Supplier ini sudah terkait dengan data stok.');
-        }
+        DB::transaction(function () use ($request) {
+            $hargaJual = $request->harga_beli + ($request->harga_beli * $request->margin / 100);
+            $konversi = $request->filled('nilai_konversi') ? $request->nilai_konversi : 1;
 
-        $supplier->delete();
-        return redirect()->back()->with('success', 'Supplier berhasil dihapus!');
+            // 1. HANDLE UNIT UTAMA
+            $unitUtama = ProductUnit::where('master_product_id', $request->master_product_id)
+                ->where('master_unit_id', $request->master_unit_id)
+                ->first();
+
+            if ($unitUtama) {
+                $unitUtama->update([
+                    'stok' => $unitUtama->stok + $request->qty,
+                    'harga_beli_terakhir' => $request->harga_beli,
+                    'margin' => $request->margin,
+                    'harga_jual' => $hargaJual,
+                    'harga_atas' => $request->harga_atas ?? $unitUtama->harga_atas,
+                    'nilai_konversi' => $konversi,
+                    'is_base_unit' => $request->has('bisa_diecer') ? false : $unitUtama->is_base_unit
+                ]);
+            } else {
+                // Tentukan is_base_unit jika belum ada
+                $hasUnits = ProductUnit::where('master_product_id', $request->master_product_id)->exists();
+                $isBase = $request->has('bisa_diecer') ? false : !$hasUnits;
+
+                $unitUtama = ProductUnit::create([
+                    'master_product_id' => $request->master_product_id,
+                    'master_unit_id' => $request->master_unit_id,
+                    'nilai_konversi' => $konversi,
+                    'is_base_unit' => $isBase,
+                    'stok' => $request->qty,
+                    'harga_beli_terakhir' => $request->harga_beli,
+                    'margin' => $request->margin,
+                    'harga_jual' => $hargaJual,
+                    'harga_atas' => $request->harga_atas,
+                ]);
+            }
+
+            // 2. HANDLE UNIT ECERAN (Jika dicentang)
+            if ($request->has('bisa_diecer')) {
+                $unitEcer = ProductUnit::where('master_product_id', $request->master_product_id)
+                    ->where('master_unit_id', $request->ecer_master_unit_id)
+                    ->first();
+
+                $hargaBeliEcer = $request->harga_beli / $konversi;
+                $ecerMargin = $request->ecer_margin ?? $request->margin;
+                $hargaJualEcer = $hargaBeliEcer + ($hargaBeliEcer * $ecerMargin / 100);
+
+                if ($unitEcer) {
+                    $unitEcer->update([
+                        'harga_beli_terakhir' => $hargaBeliEcer,
+                        'margin' => $ecerMargin,
+                        'harga_jual' => $hargaJualEcer,
+                        'harga_atas' => $request->ecer_harga_atas ?? $unitEcer->harga_atas,
+                        'nilai_konversi' => 1,
+                        'is_base_unit' => true
+                    ]);
+                } else {
+                    ProductUnit::create([
+                        'master_product_id' => $request->master_product_id,
+                        'master_unit_id' => $request->ecer_master_unit_id,
+                        'nilai_konversi' => 1,
+                        'is_base_unit' => true,
+                        'stok' => 0,
+                        'harga_beli_terakhir' => $hargaBeliEcer,
+                        'margin' => $ecerMargin,
+                        'harga_jual' => $hargaJualEcer,
+                        'harga_atas' => $request->ecer_harga_atas,
+                    ]);
+                }
+            }
+
+            // 3. SYNC HARGA KE UNIT LAIN (PROPOSIONAL)
+            $baseHpp = $request->harga_beli / $unitUtama->nilai_konversi;
+            $otherUnits = ProductUnit::where('master_product_id', $request->master_product_id)
+                ->get(); // Sync semuany termasuk yang baru dibuat
+
+            foreach ($otherUnits as $ou) {
+                $newOuHpp = $baseHpp * $ou->nilai_konversi;
+                $newOuJual = $newOuHpp + ($newOuHpp * $ou->margin / 100);
+
+                $ou->update([
+                    'harga_beli_terakhir' => $newOuHpp,
+                    'harga_jual' => $newOuJual
+                ]);
+            }
+
+            // 4. Save Purchase Transaction
+            $totalNominal = $request->qty * $request->harga_beli;
+
+            $purchase = Purchase::create([
+                'supplier_id' => $request->supplier_id,
+                'nomor_resi' => $request->nomor_resi,
+                'tanggal' => $request->tanggal,
+                'total_nominal' => $totalNominal,
+                'status_pembayaran' => $request->status_pembayaran,
+                'jatuh_tempo' => $request->jatuh_tempo,
+            ]);
+
+            PurchaseDetail::create([
+                'purchase_id' => $purchase->id,
+                'product_unit_id' => $unitUtama->id,
+                'qty' => $request->qty,
+                'harga_beli_satuan' => $request->harga_beli,
+                'subtotal' => $totalNominal
+            ]);
+
+            if ($request->status_pembayaran == 'Lunas') {
+                $codeKeluar = \App\Models\TransactionCode::where('code', 'OUT-PURCHASE')->first();
+                $unitName = $unitUtama->masterUnit->nama;
+
+                Cashflow::create([
+                    'tanggal' => $request->tanggal,
+                    'transaction_code_id' => $codeKeluar ? $codeKeluar->id : 1,
+                    'keterangan' => "Kulakan " . $unitUtama->masterProduct->nama . " (" . $request->qty . " " . $unitName . ")",
+                    'debit' => 0,
+                    'kredit' => $totalNominal
+                ]);
+            }
+        });
+
+        return redirect()->back()->with('success', 'Stok berhasil ditambahkan!');
     }
 
+    // --- BREAK UNIT METHOD (UPDATED FOR DYNAMIC TARGET) ---
+    public function breakUnit(Request $request)
+    {
+        $request->validate([
+            'product_unit_id' => 'required|exists:product_units,id', // Source Unit (e.g., Sak)
+            'target_master_unit_id' => 'required|exists:master_units,id', // Target Master Unit (e.g., Kg)
+            'qty_to_break' => 'required|integer|min:1',           // Amount to open
+        ]);
+
+        DB::transaction(function () use ($request) {
+            // 1. Get Source Data
+            $sourceUnit = ProductUnit::findOrFail($request->product_unit_id);
+
+            // Validation: Check stock
+            if ($sourceUnit->stok < $request->qty_to_break) {
+                throw new \Exception("Stok tidak cukup!");
+            }
+
+            // 2. Find or Create Target ProductUnit
+            $targetUnit = ProductUnit::where('master_product_id', $sourceUnit->master_product_id)
+                ->where('master_unit_id', $request->target_master_unit_id)
+                ->first();
+
+            if (!$targetUnit) {
+                // Target ProductUnit belum ada, BUAT BARU
+                // Hitung harga beli per unit kecil (asumsi konversi = 1 untuk unit baru/base)
+                $hargaBeliPerUnit = $sourceUnit->harga_beli_terakhir / $sourceUnit->nilai_konversi;
+                $hargaJual = $hargaBeliPerUnit + ($hargaBeliPerUnit * $sourceUnit->margin / 100);
+
+                $targetUnit = ProductUnit::create([
+                    'master_product_id' => $sourceUnit->master_product_id,
+                    'master_unit_id' => $request->target_master_unit_id,
+                    'nilai_konversi' => 1, // Unit baru default konversi 1 (base unit)
+                    'is_base_unit' => true, // Jadi base unit
+                    'stok' => 0,
+                    'harga_beli_terakhir' => $hargaBeliPerUnit,
+                    'margin' => $sourceUnit->margin,
+                    'harga_jual' => $hargaJual,
+                ]);
+            }
+
+            // 3. Calculate Conversion Quantity
+            // Formula: (Qty Open * Source Conversion) / Target Conversion
+            // Example: 1 Sak (50) -> Kg (1). Result = (1 * 50) / 1 = 50.
+            $qtyResult = ($request->qty_to_break * $sourceUnit->nilai_konversi) / $targetUnit->nilai_konversi;
+
+            // 4. Update Stocks
+            $sourceUnit->decrement('stok', $request->qty_to_break);
+            $targetUnit->increment('stok', $qtyResult);
+
+            // 5. Update Target HPP (Cost Price)
+            // Recalculate cost based on the source unit's cost
+            $newHpp = $sourceUnit->harga_beli_terakhir / ($sourceUnit->nilai_konversi / $targetUnit->nilai_konversi);
+            $newHargaJual = $newHpp + ($newHpp * $targetUnit->margin / 100);
+            $targetUnit->update([
+                'harga_beli_terakhir' => $newHpp,
+                'harga_jual' => $newHargaJual
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Konversi berhasil!');
+    }
 }

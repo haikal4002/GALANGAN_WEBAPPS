@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\StockItem;
+use App\Models\ProductUnit; // Model Baru
 use App\Models\MasterProduct;
 use App\Models\SalesLog;
+use App\Models\Purchase; // Untuk hitung hutang
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -26,34 +27,39 @@ class DashboardController extends Controller
             $availableYears = [date('Y')];
         }
 
-        $stocks = StockItem::all();
+        // Ambil semua data stok (Inventory Real)
+        $units = ProductUnit::all();
 
-        // 1. Total Aset Stok
-        $totalAset = $stocks->sum('nominal');
+        // 2. Hitung Metrik Dashboard
+        // Total Aset Stok (Stok * Harga Beli Terakhir)
+        $totalAset = $units->sum(function ($unit) {
+            return $unit->stok * $unit->harga_beli_terakhir;
+        });
 
-        // 2. Total Belum Lunas
-        $totalHutang = $stocks->where('status_pembayaran', '!=', 'Lunas')->sum('nominal');
+        // Total Belum Lunas (Ambil dari Header Pembelian/Purchase)
+        $totalHutang = Purchase::where('status_pembayaran', 'Belum Lunas')->sum('total_nominal');
 
-        // 3. Barang Ready
-        $barangReady = $stocks->where('qty', '>', 0)->count();
-        $stokKosong = $stocks->where('qty', '<=', 0)->count();
+        // Barang Ready & Kosong
+        $barangReady = $units->where('stok', '>', 0)->count();
+        $stokKosong = $units->where('stok', '<=', 0)->count();
 
-        // 4. Rata-rata Margin
-        $avgMargin = $stocks->avg('margin') ?? 0;
+        // Rata-rata Margin
+        $avgMargin = $units->avg('margin') ?? 0;
 
-        // Insights & Data Tambahan
-        $skuAktif = MasterProduct::count();
-        $lowStockCount = StockItem::lowStock(20)->count();
+        // Insights
+        $skuAktif = $units->count(); // Jumlah varian aktif
+        $lowStockCount = $units->where('stok', '<=', 20)->count(); // Stok menipis
 
-        // Data Produk Terlaris
-        $topProducts = SalesLog::with(['stockItem.masterProduct'])
-            ->select('stock_item_id', DB::raw('SUM(qty_terjual) as total_qty'), DB::raw('SUM(subtotal) as total_revenue'))
-            ->groupBy('stock_item_id')
+        // 3. Data Produk Terlaris (Top 5 Revenue)
+        // Relasi: SalesLog -> ProductUnit -> MasterProduct
+        $topProducts = SalesLog::with(['productUnit.masterProduct'])
+            ->select('product_unit_id', DB::raw('SUM(qty_terjual) as total_qty'), DB::raw('SUM(subtotal) as total_revenue'))
+            ->groupBy('product_unit_id')
             ->orderBy('total_revenue', 'desc')
             ->take(5)
             ->get();
 
-        // Data Chart Bulanan
+        // 4. Data Chart Bulanan (Omset)
         $monthlySales = SalesLog::select(
             DB::raw('MONTH(tanggal_jual) as month'),
             DB::raw('SUM(subtotal) as total')
@@ -65,7 +71,7 @@ class DashboardController extends Controller
             ->pluck('total', 'month')
             ->toArray();
 
-        // Isi array 1-12
+        // Isi array 1-12 dengan 0 jika tidak ada data
         $chartData = [];
         for ($i = 1; $i <= 12; $i++) {
             $chartData[] = $monthlySales[$i] ?? 0;

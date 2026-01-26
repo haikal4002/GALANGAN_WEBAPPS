@@ -53,7 +53,7 @@
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Barang Ready</p>
-                    <h3 class="text-2xl font-bold text-slate-800">{{ $barangReady }} Item</h3>
+                    <h3 class="text-2xl font-bold text-slate-800">{{ $barangReady }} Varian</h3>
                 </div>
                 <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
                     <i class="fas fa-box-open"></i>
@@ -119,14 +119,14 @@
                         <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                         <span class="text-xs font-bold text-slate-600">READY STOCK</span>
                     </div>
-                    <span class="text-xs font-bold text-blue-600">{{ $barangReady }} Item</span>
+                    <span class="text-xs font-bold text-blue-600">{{ $barangReady }} Varian</span>
                 </div>
                 <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-red-500"></span>
                         <span class="text-xs font-bold text-slate-600">STOK KOSONG</span>
                     </div>
-                    <span class="text-xs font-bold text-red-600">{{ $stokKosong }} Item</span>
+                    <span class="text-xs font-bold text-red-600">{{ $stokKosong }} Varian</span>
                 </div>
             </div>
         </div>
@@ -145,7 +145,11 @@
                     <div class="flex items-center gap-4">
                         <span class="text-2xl font-bold text-slate-200 group-hover:text-primary transition-colors">#{{ $loop->iteration }}</span>
                         <div>
-                            <h5 class="text-sm font-bold text-slate-700">{{ $top->stockItem->masterProduct->nama ?? 'Unknown' }}</h5>
+                            {{-- PERBAIKAN: Akses relasi baru --}}
+                            <h5 class="text-sm font-bold text-slate-700">
+                                {{ $top->productUnit->masterProduct->nama ?? 'Unknown' }} 
+                                <span class="text-xs text-slate-500 font-normal">({{ $top->productUnit->satuan ?? '-' }})</span>
+                            </h5>
                             <p class="text-xs text-slate-400">{{ $top->total_qty }} UNIT TERJUAL</p>
                         </div>
                     </div>

@@ -4,11 +4,16 @@ use App\Http\Controllers\StockItemController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PublicInventoryController;
+use App\Http\Controllers\PosController; 
 
 // redirect ke login
 Route::get('/', function () {
     return redirect('/login');
 });
+
+// Route Inventori Publik (Tanpa Login)
+Route::get('/cek-stok', [PublicInventoryController::class, 'index'])->name('public.stok');
 
 // ROute login & logout
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -21,10 +26,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/master-stock', [StockItemController::class, 'store'])->name('stok.store');
     Route::post('/master-product', [StockItemController::class, 'storeMasterProduct'])->name('master-product.store');
     Route::delete('/master-product/{id}', [StockItemController::class, 'destroyMasterProduct'])->name('master-product.destroy');
+    Route::post('/master-unit', [StockItemController::class, 'storeMasterUnit'])->name('master-unit.store');
+    Route::put('/master-unit/{id}', [StockItemController::class, 'updateMasterUnit'])->name('master-unit.update');
+    Route::delete('/master-unit/{id}', [StockItemController::class, 'destroyMasterUnit'])->name('master-unit.destroy');
     Route::post('/supplier', [StockItemController::class, 'storeSupplier'])->name('supplier.store');
     Route::delete('/supplier/{id}', [StockItemController::class, 'destroySupplier'])->name('supplier.destroy');
     Route::get('/stok', [StockItemController::class, 'index'])->name('stok.index');
     Route::get('/stok/{id}', [StockItemController::class, 'show'])->name('stok.show');
+    Route::post('/stok/break', [StockItemController::class, 'breakUnit'])->name('stok.break');
+    Route::put('/pembelian/{id}/pay', [StockItemController::class, 'markAsPaid'])->name('purchase.pay');
+
+    Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
 
 });
 

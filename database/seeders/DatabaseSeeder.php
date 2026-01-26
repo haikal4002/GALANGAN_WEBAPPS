@@ -8,9 +8,10 @@ use App\Models\Cashflow;
 use App\Models\SalesLog;
 use App\Models\TransactionCode;
 use App\Models\MasterProduct;
-use App\Models\ProductUnit;    // Model Baru
-use App\Models\Purchase;       // Model Baru
-use App\Models\PurchaseDetail; // Model Baru
+use App\Models\ProductUnit;
+use App\Models\Purchase;
+use App\Models\PurchaseDetail;
+use App\Models\MasterUnit;     // <--- 1. JANGAN LUPA IMPORT INI
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
@@ -34,7 +35,7 @@ class DatabaseSeeder extends Seeder
             'role' => 'user',
         ]);
 
-        // 2. Buat Transaction Codes (PENTING: Ini data master keuangan)
+        // 2. Buat Transaction Codes
         $codeMasuk = TransactionCode::create([
             'code' => 'IN-SALES',
             'label' => 'Pemasukan Penjualan',
@@ -64,8 +65,22 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // 4. Buat Master Product & Product Unit
-        // Kita definisikan array produk beserta satuan dasarnya
+        // --- UPDATE BARU MULAI DARI SINI ---
+
+        // 4. BUAT MASTER UNITS TERLEBIH DAHULU
+        // Kita simpan dalam array agar mudah diambil ID-nya nanti
+        $unitNames = ['Sak', 'Galon', 'Kg', 'Pick Up', 'Pcs', 'Karung', 'Box', 'Kubik', 'Truk'];
+        $masterUnits = [];
+
+        foreach ($unitNames as $uName) {
+            // Simpan object MasterUnit ke array dengan key nama satuannya
+            $masterUnits[$uName] = MasterUnit::create([
+                'nama' => $uName,
+                'singkatan' => substr($uName, 0, 3)
+            ]);
+        }
+
+        // 5. Buat Master Product & Product Unit
         $catalog = [
             ['nama' => 'Semen Tiga Roda 40kg', 'satuan' => 'Sak'],
             ['nama' => 'Cat Tembok Dulux Putih 5kg', 'satuan' => 'Galon'],
@@ -80,21 +95,23 @@ class DatabaseSeeder extends Seeder
             // A. Buat Master Product (Induk)
             $master = MasterProduct::create(['nama' => $item['nama']]);
 
-            // B. Buat Satuan Dasar (Unit) - Stok awal 0
+            // B. Buat Satuan Dasar (Unit)
             $units[] = ProductUnit::create([
                 'master_product_id' => $master->id,
-                'satuan' => $item['satuan'],
+
+                // PERUBAHAN PENTING: Gunakan ID dari MasterUnit, bukan string manual
+                'master_unit_id' => $masterUnits[$item['satuan']]->id,
+
                 'nilai_konversi' => 1,
                 'is_base_unit' => true,
-                'stok' => 0, // Nanti diisi lewat simulasi pembelian
+                'stok' => 0,
                 'harga_beli_terakhir' => 0,
                 'margin' => 0,
                 'harga_jual' => 0,
             ]);
         }
 
-        // 5. SIMULASI KULAKAN (PURCHASING)
-        // Kita looping setiap unit barang untuk dibelikan stoknya
+        // 6. SIMULASI KULAKAN (PURCHASING)
         foreach ($units as $unit) {
 
             $supplier = $suppliers[array_rand($suppliers)];
@@ -103,7 +120,7 @@ class DatabaseSeeder extends Seeder
             $totalBelanja = $qtyBeli * $hargaBeliSatuan;
             $tanggalBeli = Carbon::now()->subDays(rand(10, 30));
 
-            // A. Buat Header Pembelian (Purchase)
+            // A. Header Pembelian
             $purchase = Purchase::create([
                 'supplier_id' => $supplier->id,
                 'nomor_resi' => 'INV-' . strtoupper(uniqid()),
@@ -113,7 +130,7 @@ class DatabaseSeeder extends Seeder
                 'jatuh_tempo' => Carbon::now()->addDays(30),
             ]);
 
-            // B. Buat Detail Pembelian (PurchaseDetail)
+            // B. Detail Pembelian
             PurchaseDetail::create([
                 'purchase_id' => $purchase->id,
                 'product_unit_id' => $unit->id,
@@ -122,39 +139,37 @@ class DatabaseSeeder extends Seeder
                 'subtotal' => $totalBelanja
             ]);
 
-            // C. Update Stok & Harga di ProductUnit
-            // Hitung harga jual otomatis (Margin 20%)
+            // C. Update Stok
             $margin = 20;
             $hargaJual = $hargaBeliSatuan + ($hargaBeliSatuan * $margin / 100);
 
             $unit->update([
-                'stok' => $unit->stok + $qtyBeli, // Tambah stok
+                'stok' => $unit->stok + $qtyBeli,
                 'harga_beli_terakhir' => $hargaBeliSatuan,
                 'margin' => $margin,
                 'harga_jual' => $hargaJual,
-                'harga_atas' => $hargaJual * 1.1 // Markup 10% dari harga jual
+                'harga_atas' => $hargaJual * 1.1
             ]);
 
-            // D. Catat Cashflow Keluar (Uang Belanja)
+            // D. Catat Cashflow Keluar
+            // PERBAIKAN: Mengambil nama satuan lewat relasi masterUnit
             Cashflow::create([
                 'tanggal' => $tanggalBeli,
                 'transaction_code_id' => $codeKeluar->id,
-                'keterangan' => "Kulakan " . $unit->masterProduct->nama . " (" . $qtyBeli . " " . $unit->satuan . ")",
+                'keterangan' => "Kulakan " . $unit->masterProduct->nama . " (" . $qtyBeli . " " . $unit->masterUnit->nama . ")",
                 'debit' => 0,
                 'kredit' => $totalBelanja
             ]);
 
-            // 6. SIMULASI PENJUALAN (SALES)
-            // Jual barang ini beberapa kali secara acak
+            // 7. SIMULASI PENJUALAN
             for ($i = 0; $i < rand(3, 8); $i++) {
                 $qtyJual = rand(1, 5);
 
-                // Pastikan stok cukup
                 if ($unit->stok >= $qtyJual) {
                     $tglJual = Carbon::parse($tanggalBeli)->addDays(rand(1, 10));
                     $subtotalJual = $qtyJual * $unit->harga_jual;
 
-                    // A. Catat Sales Log
+                    // A. Sales Log
                     SalesLog::create([
                         'product_unit_id' => $unit->id,
                         'tanggal_jual' => $tglJual,
@@ -163,10 +178,10 @@ class DatabaseSeeder extends Seeder
                         'subtotal' => $subtotalJual
                     ]);
 
-                    // B. Kurangi Stok Unit
+                    // B. Kurangi Stok
                     $unit->decrement('stok', $qtyJual);
 
-                    // C. Catat Cashflow Masuk (Pendapatan)
+                    // C. Cashflow Masuk
                     Cashflow::create([
                         'tanggal' => $tglJual,
                         'transaction_code_id' => $codeMasuk->id,
@@ -178,7 +193,7 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // 7. Cashflow Tambahan (Operasional)
+        // 8. Cashflow Tambahan
         Cashflow::create([
             'tanggal' => Carbon::now()->subDays(2),
             'transaction_code_id' => $codeOpr->id,

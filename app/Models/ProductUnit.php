@@ -8,7 +8,7 @@ class ProductUnit extends Model
 {
     protected $fillable = [
         'master_product_id',
-        'satuan',
+        'master_unit_id',
         'nilai_konversi',
         'is_base_unit',
         'stok',
@@ -22,6 +22,11 @@ class ProductUnit extends Model
     public function masterProduct()
     {
         return $this->belongsTo(MasterProduct::class);
+    }
+
+    public function masterUnit()
+    {
+        return $this->belongsTo(MasterUnit::class);
     }
 
     // Relasi ke Sales (Penjualan mengambil stok dari unit ini)

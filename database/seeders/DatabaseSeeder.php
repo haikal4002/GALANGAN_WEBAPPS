@@ -42,10 +42,22 @@ class DatabaseSeeder extends Seeder
             'color' => 'success'
         ]);
 
+        $codeModal = TransactionCode::create([
+            'code' => 'IN-MODAL',
+            'label' => 'Modal Awal',
+            'color' => 'primary'
+        ]);
+
         $codeKeluar = TransactionCode::create([
             'code' => 'OUT-PURCHASE',
             'label' => 'Pengeluaran Kulakan',
             'color' => 'danger'
+        ]);
+
+        $codeOpr = TransactionCode::create([
+            'code' => 'OUT-OPR',
+            'label' => 'Biaya Operasional',
+            'color' => 'warning'
         ]);
 
         $codeOpr = TransactionCode::create([
@@ -64,6 +76,15 @@ class DatabaseSeeder extends Seeder
                 'alamat' => 'Jl. Raya Bangunan No. ' . rand(1, 100)
             ]);
         }
+
+        // 4. INPUT MODAL AWAL (Agar saldo tidak minus)
+        Cashflow::create([
+            'tanggal' => Carbon::now()->subMonths(2),
+            'transaction_code_id' => $codeModal->id,
+            'keterangan' => 'MODAL AWAL USAHA',
+            'debit' => 100000000, // 100 Juta
+            'kredit' => 0
+        ]);
 
         // --- UPDATE BARU MULAI DARI SINI ---
 

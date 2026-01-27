@@ -88,16 +88,24 @@
                     @endif
                 </a>
 
-                <a href="#" class="flex items-center rounded-xl transition-all group text-slate-400 hover:bg-slate-800 hover:text-white"
-                   :class="sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'">
-                    <i class="fas fa-file-invoice-dollar w-6 text-center text-lg group-hover:text-primary transition-colors" :class="sidebarOpen && 'mr-2'"></i>
-                    <span x-show="sidebarOpen" x-transition.opacity class="font-medium text-sm whitespace-nowrap">Laporan Bulanan</span>
+                <a href="{{ route('report.index') }}" 
+                class="flex items-center rounded-xl transition-all group {{ request()->routeIs('report.*') ? 'bg-white text-primary shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}"
+                :class="sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'">
+                    <i class="fas fa-file-invoice-dollar w-6 text-center text-lg {{ request()->routeIs('report.*') ? '' : 'group-hover:text-primary transition-colors' }}" :class="sidebarOpen && 'mr-2'"></i>
+                    <span x-show="sidebarOpen" x-transition.opacity class="{{ request()->routeIs('report.*') ? 'font-bold' : 'font-medium' }} text-sm whitespace-nowrap">Laporan Bulanan</span>
+                    @if(request()->routeIs('report.*'))
+                        <div x-show="sidebarOpen" class="ml-auto w-2 h-2 bg-primary rounded-full"></div>
+                    @endif
                 </a>
 
-                <a href="#" class="flex items-center rounded-xl transition-all group text-slate-400 hover:bg-slate-800 hover:text-white"
-                   :class="sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'">
-                    <i class="fas fa-wallet w-6 text-center text-lg group-hover:text-primary transition-colors" :class="sidebarOpen && 'mr-2'"></i>
-                    <span x-show="sidebarOpen" x-transition.opacity class="font-medium text-sm whitespace-nowrap">Cash Flow</span>
+                <a href="{{ route('cashflow.index') }}" 
+                class="flex items-center rounded-xl transition-all group {{ request()->routeIs('cashflow.*') ? 'bg-white text-primary shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}"
+                :class="sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'">
+                    <i class="fas fa-wallet w-6 text-center text-lg {{ request()->routeIs('cashflow.*') ? '' : 'group-hover:text-primary transition-colors' }}" :class="sidebarOpen && 'mr-2'"></i>
+                    <span x-show="sidebarOpen" x-transition.opacity class="{{ request()->routeIs('cashflow.*') ? 'font-bold' : 'font-medium' }} text-sm whitespace-nowrap">Cash Flow</span>
+                    @if(request()->routeIs('cashflow.*'))
+                        <div x-show="sidebarOpen" class="ml-auto w-2 h-2 bg-primary rounded-full"></div>
+                    @endif
                 </a>
 
                 <a href="#" class="flex items-center rounded-xl transition-all group text-slate-400 hover:bg-slate-800 hover:text-white"

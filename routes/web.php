@@ -5,7 +5,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PublicInventoryController;
-use App\Http\Controllers\PosController; 
+use App\Http\Controllers\PosController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\CashflowController;
 
 // redirect ke login
 Route::get('/', function () {
@@ -22,6 +24,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
     Route::get('/master-stock', [StockItemController::class, 'index'])->name('stok.index');
     Route::post('/master-stock', [StockItemController::class, 'store'])->name('stok.store');
     Route::post('/master-product', [StockItemController::class, 'storeMasterProduct'])->name('master-product.store');
@@ -29,15 +32,23 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/master-unit', [StockItemController::class, 'storeMasterUnit'])->name('master-unit.store');
     Route::put('/master-unit/{id}', [StockItemController::class, 'updateMasterUnit'])->name('master-unit.update');
     Route::delete('/master-unit/{id}', [StockItemController::class, 'destroyMasterUnit'])->name('master-unit.destroy');
+
     Route::post('/supplier', [StockItemController::class, 'storeSupplier'])->name('supplier.store');
     Route::delete('/supplier/{id}', [StockItemController::class, 'destroySupplier'])->name('supplier.destroy');
+
     Route::get('/stok', [StockItemController::class, 'index'])->name('stok.index');
     Route::get('/stok/{id}', [StockItemController::class, 'show'])->name('stok.show');
     Route::post('/stok/break', [StockItemController::class, 'breakUnit'])->name('stok.break');
     Route::put('/pembelian/{id}/pay', [StockItemController::class, 'markAsPaid'])->name('purchase.pay');
 
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
+    Route::post('/pos/process', [PosController::class, 'process'])->name('pos.process');
 
+    Route::get('/laporan', [ReportController::class, 'index'])->name('report.index');
+    Route::get('/laporan/export', [ReportController::class, 'export'])->name('report.export');
+
+    Route::get('/cash-flow', [CashflowController::class, 'index'])->name('cashflow.index');
+    Route::post('/cash-flow', [CashflowController::class, 'store'])->name('cashflow.store');
 });
 
 Route::middleware(['auth', 'is_admin'])->group(function () {

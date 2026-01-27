@@ -8,6 +8,8 @@ use App\Http\Controllers\PublicInventoryController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CashflowController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ProfileController;
 
 // redirect ke login
 Route::get('/', function () {
@@ -49,6 +51,18 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/cash-flow', [CashflowController::class, 'index'])->name('cashflow.index');
     Route::post('/cash-flow', [CashflowController::class, 'store'])->name('cashflow.store');
+
+    Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+    Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+
+    // Route Kelola Kode
+    Route::post('/transaction-codes', [ExpenseController::class, 'storeCode'])->name('codes.store');
+    Route::delete('/transaction-codes/{id}', [ExpenseController::class, 'destroyCode'])->name('codes.destroy');
+
+    // Route Profile / Pengaturan
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 });
 
 Route::middleware(['auth', 'is_admin'])->group(function () {

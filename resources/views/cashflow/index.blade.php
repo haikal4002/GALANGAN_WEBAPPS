@@ -8,6 +8,8 @@
 
 @section('content')
 
+<div x-data="{ showCodeModal: false }">
+
 {{-- TOP METRICS --}}
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
     {{-- Card Saldo --}}
@@ -43,11 +45,18 @@
             <div class="flex justify-between items-center mb-6">
                 <h4 class="text-sm font-bold text-slate-700 uppercase border-l-4 border-primary pl-3">Mutasi Kas Harian</h4>
                 
-                {{-- Legend Kode (Hanya Tampilan) --}}
-                <div class="hidden md:flex gap-3 text-[10px] font-medium text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg">
-                    @foreach($codes->take(4) as $code)
-                        <span><b class="text-primary">{{ $code->code }}:</b> {{ Str::limit($code->label, 10) }}</span>
-                    @endforeach
+                {{-- Tombol Kelola Kode --}}
+                <div class="flex gap-2">
+                    <button @click="showCodeModal = true" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-1.5 border border-slate-200">
+                        <i class="fas fa-hashtag text-primary"></i> Kelola Kode
+                    </button>
+                    
+                    {{-- Legend Kode (Hanya Tampilan) --}}
+                    <div class="hidden md:flex gap-3 text-[10px] font-medium text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                        @foreach($codes->take(3) as $code)
+                            <span><b class="text-primary">{{ $code->code }}:</b> {{ Str::limit($code->label, 10) }}</span>
+                        @endforeach
+                    </div>
                 </div>
             </div>
 
@@ -191,6 +200,92 @@
             </div>
         </div>
     </div>
+
+</div>
+
+{{-- MODAL KELOLA KODE TRANSAKSI --}}
+<div x-show="showCodeModal" style="display: none;" 
+     class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+     x-transition.opacity>
+    
+    <div @click.away="showCodeModal = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {{-- Header --}}
+        <div class="bg-[#0B1120] px-6 py-4 flex justify-between items-center">
+            <h3 class="text-white font-bold text-sm flex items-center gap-2">
+                <i class="fas fa-hashtag text-primary"></i> KELOLA KODE TRANSAKSI
+            </h3>
+            <button @click="showCodeModal = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
+        </div>
+
+        {{-- Body: Form Tambah --}}
+        <div class="p-6 border-b border-slate-100 bg-slate-50">
+            <form action="{{ route('codes.store') }}" method="POST">
+                @csrf
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Kode (Prefix)</label>
+                        <input type="text" name="code" placeholder="Ex: IN-LAIN" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold focus:border-primary focus:outline-none" required>
+                        <p class="text-[8px] text-slate-400 mt-1">* Gunakan IN- untuk Masuk, OUT- untuk Keluar</p>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Kategori</label>
+                        <input type="text" name="label" placeholder="Ex: Sewa Lahan" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-primary focus:outline-none" required>
+                    </div>
+                </div>
+
+                {{-- Pilihan Warna --}}
+                <div class="mb-4">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Warna Identitas UI</label>
+                    <div class="flex gap-3">
+                        @foreach(['primary', 'danger', 'success', 'warning', 'indigo', 'teal', 'slate'] as $color)
+                            <label class="cursor-pointer">
+                                <input type="radio" name="color" value="{{ $color }}" class="peer sr-only" {{ $loop->first ? 'checked' : '' }}>
+                                <div class="w-6 h-6 rounded-full bg-{{ $color == 'primary' ? 'orange' : ($color == 'danger' ? 'red' : ($color == 'success' ? 'green' : ($color == 'warning' ? 'yellow' : $color))) }}-500 border-2 border-transparent peer-checked:border-slate-800 peer-checked:scale-110 transition-all shadow-sm"></div>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-2.5 bg-primary hover:bg-orange-700 text-white rounded-lg font-bold text-xs shadow-lg shadow-orange-500/30 transition-all">
+                    TAMBAH KATEGORI BARU
+                </button>
+            </form>
+        </div>
+
+        {{-- List Kode --}}
+        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <p class="text-[10px] font-bold text-slate-400 uppercase mb-3 px-2">Katalog Kode Aktif</p>
+            <div class="space-y-2">
+                @foreach($codes as $code)
+                <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm group hover:border-primary/30 transition-all">
+                    <div class="flex items-center gap-3">
+                        <span class="px-2 py-1 rounded bg-slate-100 font-mono font-bold text-slate-800 text-[10px] border border-slate-200">
+                            {{ $code->code }}
+                        </span>
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-tight">{{ $code->label }}</span>
+                    </div>
+                    
+                    {{-- Tombol Hapus (Proteksi kode inti) --}}
+                    @if(!in_array($code->code, ['IN-SALES', 'OUT-PURCHASE', 'OUT-OPR', 'IN-MODAL']))
+                        <form action="{{ route('codes.destroy', $code->id) }}" method="POST" onsubmit="return confirm('Hapus kategori ini?')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </form>
+                    @endif
+                </div>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="p-4 bg-slate-50 text-center border-t border-slate-100">
+            <p class="text-[9px] text-slate-400">Pastikan kode diawali <b>IN-</b> atau <b>OUT-</b> untuk sistem deteksi otomatis.</p>
+        </div>
+
+    </div>
+</div>
 
 </div>
 

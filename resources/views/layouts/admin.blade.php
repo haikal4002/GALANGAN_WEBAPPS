@@ -108,20 +108,26 @@
                     @endif
                 </a>
 
-                <a href="#" class="flex items-center rounded-xl transition-all group text-slate-400 hover:bg-slate-800 hover:text-white"
-                   :class="sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'">
-                    <i class="fas fa-layer-group w-6 text-center text-lg group-hover:text-primary transition-colors" :class="sidebarOpen && 'mr-2'"></i>
-                    <span x-show="sidebarOpen" x-transition.opacity class="font-medium text-sm whitespace-nowrap">Lainya</span>
+                <a href="{{ route('expenses.index') }}" 
+                class="flex items-center rounded-xl transition-all group {{ request()->routeIs('expenses.*') ? 'bg-white text-primary shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}"
+                :class="sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'">
+                    <i class="fas fa-layer-group w-6 text-center text-lg {{ request()->routeIs('expenses.*') ? '' : 'group-hover:text-primary transition-colors' }}" :class="sidebarOpen && 'mr-2'"></i>
+                    <span x-show="sidebarOpen" x-transition.opacity class="{{ request()->routeIs('expenses.*') ? 'font-bold' : 'font-medium' }} text-sm whitespace-nowrap">Lainnya (Expenses)</span>
+                    @if(request()->routeIs('expenses.*'))
+                        <div x-show="sidebarOpen" class="ml-auto w-2 h-2 bg-primary rounded-full"></div>
+                    @endif
                 </a>
                 
                 <div x-show="sidebarOpen" class="pt-4 pb-2">
                     <p class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Settings</p>
                 </div>
 
-                <a href="#" class="flex items-center rounded-xl transition-all group text-slate-400 hover:bg-slate-800 hover:text-white"
+                <a href="{{ route('profile.index') }}" 
+                   class="flex items-center rounded-xl transition-all group 
+                   {{ request()->routeIs('profile.*') ? 'bg-white text-primary shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}"
                    :class="sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'">
-                    <i class="fas fa-cog w-6 text-center text-lg group-hover:text-primary transition-colors" :class="sidebarOpen && 'mr-2'"></i>
-                    <span x-show="sidebarOpen" x-transition.opacity class="font-medium text-sm whitespace-nowrap">Pengaturan</span>
+                    <i class="fas fa-cog w-6 text-center text-lg {{ request()->routeIs('profile.*') ? '' : 'group-hover:text-primary transition-colors' }}" :class="sidebarOpen && 'mr-2'"></i>
+                    <span x-show="sidebarOpen" x-transition.opacity class="{{ request()->routeIs('profile.*') ? 'font-bold' : 'font-medium' }} text-sm whitespace-nowrap">Pengaturan</span>
                 </a>
             </nav>
 

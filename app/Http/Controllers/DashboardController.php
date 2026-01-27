@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductUnit; // Model Baru
 use App\Models\MasterProduct;
-use App\Models\SalesLog;
+use App\Models\PosTransactionItem;
 use App\Models\Purchase; // Untuk hitung hutang
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +16,7 @@ class DashboardController extends Controller
         $selectedYear = $request->get('year', date('Y'));
 
         // Ambil semua tahun yang tersedia di data penjualan untuk filter
-        $availableYears = SalesLog::selectRaw('YEAR(tanggal_jual) as year')
+        $availableYears = PosTransactionItem::selectRaw('YEAR(created_at) as year')
             ->distinct()
             ->orderBy('year', 'desc')
             ->pluck('year')
@@ -51,20 +51,20 @@ class DashboardController extends Controller
         $lowStockCount = $units->where('stok', '<=', 20)->count(); // Stok menipis
 
         // 3. Data Produk Terlaris (Top 5 Revenue)
-        // Relasi: SalesLog -> ProductUnit -> MasterProduct
-        $topProducts = SalesLog::with(['productUnit.masterProduct'])
-            ->select('product_unit_id', DB::raw('SUM(qty_terjual) as total_qty'), DB::raw('SUM(subtotal) as total_revenue'))
+        // Relasi: PosTransactionItem -> ProductUnit -> MasterProduct
+        $topProducts = PosTransactionItem::with(['productUnit.masterProduct'])
+            ->select('product_unit_id', DB::raw('SUM(qty) as total_qty'), DB::raw('SUM(subtotal) as total_revenue'))
             ->groupBy('product_unit_id')
             ->orderBy('total_revenue', 'desc')
             ->take(5)
             ->get();
 
         // 4. Data Chart Bulanan (Omset)
-        $monthlySales = SalesLog::select(
-            DB::raw('MONTH(tanggal_jual) as month'),
+        $monthlySales = PosTransactionItem::select(
+            DB::raw('MONTH(created_at) as month'),
             DB::raw('SUM(subtotal) as total')
         )
-            ->whereYear('tanggal_jual', $selectedYear)
+            ->whereYear('created_at', $selectedYear)
             ->groupBy('month')
             ->orderBy('month')
             ->get()

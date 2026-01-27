@@ -6,7 +6,6 @@ use App\Models\ProductUnit;
 use App\Models\PosTransaction;
 use App\Models\PosTransactionItem;
 use App\Models\Cashflow;
-use App\Models\SalesLog;
 use App\Models\TransactionCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -94,15 +93,6 @@ class PosController extends Controller
                         'pos_transaction_id' => $trx->id,
                         'product_unit_id' => $item['id'],
                         'qty' => $item['qty'],
-                        'harga_satuan' => $product->harga_jual,
-                        'subtotal' => $itemTotal,
-                    ]);
-
-                    // Catat ke Sales Log untuk laporan penjualan
-                    SalesLog::create([
-                        'product_unit_id' => $item['id'],
-                        'tanggal_jual' => Carbon::now(),
-                        'qty_terjual' => $item['qty'],
                         'harga_satuan' => $product->harga_jual,
                         'subtotal' => $itemTotal,
                     ]);

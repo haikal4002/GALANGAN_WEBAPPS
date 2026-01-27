@@ -29,9 +29,9 @@ class ProductUnit extends Model
         return $this->belongsTo(MasterUnit::class);
     }
 
-    // Relasi ke Sales (Penjualan mengambil stok dari unit ini)
-    public function salesLogs()
+    // Relasi ke Item POS
+    public function posItems()
     {
-        return $this->hasMany(SalesLog::class);
+        return $this->hasMany(PosTransactionItem::class);
     }
 }

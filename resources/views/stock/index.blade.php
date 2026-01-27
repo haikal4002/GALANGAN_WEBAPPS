@@ -118,6 +118,7 @@
                             <th class="px-6 py-4 whitespace-nowrap text-center">Unit Ecer</th>
                             <th class="px-6 py-4 whitespace-nowrap text-center">Stok</th>
                             <th class="px-6 py-4 whitespace-nowrap">HPP Terakhir</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-blue-500">Nominal</th>
                             <th class="px-6 py-4 whitespace-nowrap text-orange-500">Margin</th>
                             <th class="px-6 py-4 whitespace-nowrap text-green-600">Harga Jual</th>
                             <th class="px-6 py-4 whitespace-nowrap text-blue-600">Harga Atas</th>
@@ -168,6 +169,7 @@
                                 {{ $item->stok }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">Rp {{ number_format($item->harga_beli_terakhir, 0, ',', '.') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap font-bold text-blue-600">Rp {{ number_format($item->stok * $item->harga_beli_terakhir, 0, ',', '.') }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-orange-600 font-bold">{{ $item->margin }}%</td>
                             <td class="px-6 py-4 whitespace-nowrap text-green-600 font-bold">Rp {{ number_format($item->harga_jual, 0, ',', '.') }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-blue-600 font-bold">Rp {{ number_format($item->harga_atas, 0, ',', '.') }}</td>

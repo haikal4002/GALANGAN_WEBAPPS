@@ -67,17 +67,17 @@
             </div>
 
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto w-full">
+                <div class="overflow-x-auto w-full max-h-[calc(100vh-250px)] overflow-y-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200">
-                                <th class="px-6 py-4 whitespace-nowrap">No</th>
-                                <th class="px-6 py-4 whitespace-nowrap">Nama Barang</th>
-                                <th class="px-6 py-4 whitespace-nowrap">Satuan</th>
-                                <th class="px-6 py-4 whitespace-nowrap text-center">Unit Ecer</th>
-                                <th class="px-6 py-4 whitespace-nowrap text-center">Stok Tersedia</th>
-                                <th class="px-6 py-4 whitespace-nowrap text-green-600">Harga Jual</th>
-                                <th class="px-6 py-4 whitespace-nowrap text-blue-600">Harga Atas</th>
+                                <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">No</th>
+                                <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Nama Barang</th>
+                                <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Satuan</th>
+                                <th class="px-6 py-4 whitespace-nowrap text-center sticky top-0 bg-slate-50 z-10">Unit Ecer</th>
+                                <th class="px-6 py-4 whitespace-nowrap text-center sticky top-0 bg-slate-50 z-10">Stok Tersedia</th>
+                                <th class="px-6 py-4 whitespace-nowrap text-green-600 sticky top-0 bg-slate-50 z-10">Harga Jual</th>
+                                <th class="px-6 py-4 whitespace-nowrap text-blue-600 sticky top-0 bg-slate-50 z-10">Harga Atas</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
@@ -85,7 +85,7 @@
                             <tr x-show="searchQuery === '' || '{{ strtolower($item->masterProduct->nama ?? '') }}'.includes(searchQuery.toLowerCase())" 
                                 class="hover:bg-slate-50/50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->iteration }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>
+                                <td class="px-6 py-4 whitespace-normal break-words max-w-[300px] font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-bold text-slate-600">
                                         {{ $item->masterUnit->nama ?? '-' }}

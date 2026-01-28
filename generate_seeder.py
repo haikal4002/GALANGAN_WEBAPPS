@@ -37,26 +37,15 @@ def get_unit_id(product_name):
         if key in name_upper: return unit_id
     return UNIT_MAP_DEFAULT
 
-# PERBAIKAN UTAMA: Fungsi Tanggal Lebih Pintar
 def clean_date(val):
     if pd.isna(val): return '2026-01-01'
-    
     val_str = str(val).strip()
-    
-    # 1. Perbaiki Typo Spesifik "21/012026" -> "21/01/2026"
-    # Pola: 2 digit / 6 digit (012026)
     match_typo = re.match(r'^(\d{1,2})/(\d{2})(\d{4})$', val_str)
     if match_typo:
         val_str = f"{match_typo.group(1)}/{match_typo.group(2)}/{match_typo.group(3)}"
-
     try:
-        # Gunakan dayfirst=True untuk format Indonesia (DD/MM/YYYY)
         dt = pd.to_datetime(val_str, dayfirst=True, errors='coerce')
-        
-        if pd.isna(dt): # Jika gagal parsing
-            print(f"⚠️ Warning: Tanggal tidak valid '{val}'. Menggunakan default hari ini.")
-            return datetime.date.today().strftime('%Y-%m-%d')
-            
+        if pd.isna(dt): return datetime.date.today().strftime('%Y-%m-%d')
         return dt.strftime('%Y-%m-%d')
     except:
         return '2026-01-01'
@@ -83,6 +72,8 @@ df_units['supplier_id'] = df_units['SUPPLIER'].map(supplier_map).fillna(1).astyp
 df_units['master_unit_id'] = df_units['NAMA BARANG'].apply(get_unit_id)
 df_units['harga_beli'] = df_units['HARGA BELI '].apply(clean_price)
 df_units['harga_jual'] = df_units['HARGA JUAL'].apply(clean_price)
+# Baca Kolom HARGA ATAS
+df_units['harga_atas'] = df_units['HARGA ATAS'].apply(clean_price)
 df_units['stok'] = df_units['QTY'].apply(clean_price).astype(int)
 
 # 2. TRANSAKSI POS
@@ -163,7 +154,7 @@ for _, row in df_cf.iterrows():
     trx_code_id = TRX_CODE_MAP.get(kd_asal, 1)
     debit = clean_price(row['DEBIT'])
     kredit = clean_price(row['KREDIT'])
-    tgl_bersih = clean_date(row['TANGGAL']) # Gunakan fungsi clean_date baru
+    tgl_bersih = clean_date(row['TANGGAL'])
     
     cashflows.append({
         'tanggal': tgl_bersih,
@@ -217,6 +208,7 @@ class LegacyDataSeeder extends Seeder
             'stok': row['stok'],
             'harga_beli_terakhir': row['harga_beli'],
             'harga_jual': row['harga_jual'],
+            'harga_atas': row['harga_atas'],
             'margin': 20,
             'created_at': '2026-01-01 00:00:00',
             'updated_at': '2026-01-01 00:00:00'
@@ -243,4 +235,4 @@ class LegacyDataSeeder extends Seeder
 with open('LegacyDataSeeder.php', 'w', encoding='utf-8') as f:
     f.write(php_content)
 
-print("✅ SELESAI! File seeder baru telah dibuat dengan perbaikan tanggal.")
+print("✅ SELESAI! File 'LegacyDataSeeder.php' berhasil diperbaiki.")

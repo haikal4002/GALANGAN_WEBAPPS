@@ -28,6 +28,16 @@
                 }
             }
         }
+
+        // Global function for Rupiah formatting
+        window.formatRupiah = function(number) {
+            if (!number) return '0';
+            return new Intl.NumberFormat('id-ID').format(number);
+        }
+
+        window.unformatRupiah = function(string) {
+            return parseInt(string.replace(/\D/g, '')) || 0;
+        }
     </script>
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }

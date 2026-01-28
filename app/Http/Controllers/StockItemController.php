@@ -177,6 +177,41 @@ class StockItemController extends Controller
         return redirect()->back()->with('success', 'Supplier berhasil diperbarui!');
     }
 
+    // Update Price & Margin for Stock Item
+    public function updateItem(Request $request, $id)
+    {
+        $request->validate([
+            'harga_jual' => 'required|numeric|min:0',
+            'harga_atas' => 'nullable|numeric|min:0',
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
+        $unit = ProductUnit::findOrFail($id);
+
+        // Recalculate margin
+        $margin = 0;
+        if ($unit->harga_beli_terakhir > 0) {
+            $margin = (($request->harga_jual - $unit->harga_beli_terakhir) / $unit->harga_beli_terakhir) * 100;
+        }
+
+        // update harga + margin first
+        $unit->update([
+            'harga_jual' => $request->harga_jual,
+            'harga_atas' => $request->harga_atas ?? $unit->harga_atas,
+            'margin' => round($margin, 2),
+        ]);
+
+        // handle optional gambar upload
+        if ($request->hasFile('gambar')) {
+            $file = $request->file('gambar');
+            $filename = time() . '_update_' . $unit->id . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('images/products'), $filename);
+            $unit->update(['gambar' => 'images/products/' . $filename]);
+        }
+
+        return redirect()->back()->with('success', 'Harga Jual & Margin berhasil diperbarui secara otomatis!');
+    }
+
     // --- STORE METHOD (UPDATED FOR MASTER UNITS) ---
     public function store(Request $request)
     {
@@ -197,11 +232,22 @@ class StockItemController extends Controller
             'ecer_master_unit_id' => 'required_if:bisa_diecer,on|nullable|exists:master_units,id',
             'ecer_margin' => 'nullable|numeric|min:0',
             'ecer_harga_atas' => 'nullable|numeric|min:0',
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'ecer_gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         DB::transaction(function () use ($request) {
             $hargaJual = $request->harga_beli + ($request->harga_beli * $request->margin / 100);
             $konversi = $request->filled('nilai_konversi') ? $request->nilai_konversi : 1;
+
+            // Handle Image Upload for Unit Utama
+            $pathGambarUtama = null;
+            if ($request->hasFile('gambar')) {
+                $file = $request->file('gambar');
+                $filename = time() . '_' . str_replace(' ', '_', strtolower($request->nomor_resi)) . '_utama.' . $file->getClientOriginalExtension();
+                $file->move(public_path('images/products'), $filename);
+                $pathGambarUtama = 'images/products/' . $filename;
+            }
 
             // 1. HANDLE UNIT UTAMA
             $unitUtama = ProductUnit::where('master_product_id', $request->master_product_id)
@@ -209,7 +255,7 @@ class StockItemController extends Controller
                 ->first();
 
             if ($unitUtama) {
-                $unitUtama->update([
+                $updateData = [
                     'stok' => $unitUtama->stok + $request->qty,
                     'harga_beli_terakhir' => $request->harga_beli,
                     'margin' => $request->margin,
@@ -217,7 +263,11 @@ class StockItemController extends Controller
                     'harga_atas' => $request->harga_atas ?? $unitUtama->harga_atas,
                     'nilai_konversi' => $konversi,
                     'is_base_unit' => $request->has('bisa_diecer') ? false : $unitUtama->is_base_unit
-                ]);
+                ];
+                if ($pathGambarUtama)
+                    $updateData['gambar'] = $pathGambarUtama;
+
+                $unitUtama->update($updateData);
             } else {
                 // Tentukan is_base_unit jika belum ada
                 $hasUnits = ProductUnit::where('master_product_id', $request->master_product_id)->exists();
@@ -233,11 +283,21 @@ class StockItemController extends Controller
                     'margin' => $request->margin,
                     'harga_jual' => $hargaJual,
                     'harga_atas' => $request->harga_atas,
+                    'gambar' => $pathGambarUtama
                 ]);
             }
 
             // 2. HANDLE UNIT ECERAN (Jika dicentang)
             if ($request->has('bisa_diecer')) {
+                // Handle Image Upload for Unit Ecer
+                $pathGambarEcer = null;
+                if ($request->hasFile('ecer_gambar')) {
+                    $file = $request->file('ecer_gambar');
+                    $filename = time() . '_' . str_replace(' ', '_', strtolower($request->nomor_resi)) . '_ecer.' . $file->getClientOriginalExtension();
+                    $file->move(public_path('images/products'), $filename);
+                    $pathGambarEcer = 'images/products/' . $filename;
+                }
+
                 $unitEcer = ProductUnit::where('master_product_id', $request->master_product_id)
                     ->where('master_unit_id', $request->ecer_master_unit_id)
                     ->first();
@@ -247,14 +307,18 @@ class StockItemController extends Controller
                 $hargaJualEcer = $hargaBeliEcer + ($hargaBeliEcer * $ecerMargin / 100);
 
                 if ($unitEcer) {
-                    $unitEcer->update([
+                    $updateDataEcer = [
                         'harga_beli_terakhir' => $hargaBeliEcer,
                         'margin' => $ecerMargin,
                         'harga_jual' => $hargaJualEcer,
                         'harga_atas' => $request->ecer_harga_atas ?? $unitEcer->harga_atas,
                         'nilai_konversi' => 1,
                         'is_base_unit' => true
-                    ]);
+                    ];
+                    if ($pathGambarEcer)
+                        $updateDataEcer['gambar'] = $pathGambarEcer;
+
+                    $unitEcer->update($updateDataEcer);
                 } else {
                     ProductUnit::create([
                         'master_product_id' => $request->master_product_id,
@@ -266,6 +330,7 @@ class StockItemController extends Controller
                         'margin' => $ecerMargin,
                         'harga_jual' => $hargaJualEcer,
                         'harga_atas' => $request->ecer_harga_atas,
+                        'gambar' => $pathGambarEcer
                     ]);
                 }
             }

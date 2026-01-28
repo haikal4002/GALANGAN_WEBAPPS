@@ -68,7 +68,9 @@
             selectedProductId: '',
             searchUnitUtamaBelanja: '',
             selectedUnitUtamaId: '',
-            searchUnitEcerBelanja: ''
+            searchUnitEcerBelanja: '',
+            showImageModal: false,
+            imageSrc: ''
          }"
          @open-manage-modal.window="showManageModal = true"
          @open-unit-modal.window="showUnitModal = true"
@@ -76,7 +78,22 @@
          @open-add-stock-modal.window="showAddStockModal = true"
          @open-history-modal.window="showHistoryModal = true"
          @search-stok.window="searchQuery = $event.detail"
-         @open-break-modal.window="showBreakModal = true; breakItem = $event.detail; selectedTargetId = $event.detail.target_unit_id || '';">
+         @open-break-modal.window="showBreakModal = true; breakItem = $event.detail; selectedTargetId = $event.detail.target_unit_id || '';"
+         @open-image-modal.window="imageSrc = $event.detail; showImageModal = true"
+         >
+
+        {{-- MODAL VIEW GAMBAR --}}
+        <div x-show="showImageModal" 
+             style="display: none;"
+             class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+             @click="showImageModal = false">
+            <div class="relative max-w-4xl max-h-full">
+                <img :src="imageSrc" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl border-4 border-white">
+                <button class="absolute -top-4 -right-4 bg-white text-slate-800 w-10 h-10 rounded-full flex items-center justify-center shadow-lg" @click="showImageModal = false">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-2xl p-6 border border-blue-100 shadow-sm flex flex-col justify-between">
@@ -120,6 +137,7 @@
                     <thead>
                         <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200">
                             <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">No</th>
+                            <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Gambar</th>
                             <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Nama Barang</th>
                             <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Satuan</th>
                             <th class="px-6 py-4 whitespace-nowrap text-center sticky top-0 bg-slate-50 z-10">Unit Ecer</th>
@@ -155,8 +173,49 @@
 
                         <tr x-show="searchQuery === '' || searchQuery.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.nama.includes(word))" 
                             data-nama="{{ strtolower($item->masterProduct->nama ?? '') }}"
+                            x-data="{ 
+                                editing: false, 
+                                hargaJual: {{ $item->harga_jual }}, 
+                                hargaAtas: {{ $item->harga_atas }}, 
+                                hargaBeli: {{ $item->harga_beli_terakhir }},
+                                get margin() {
+                                    if (this.hargaBeli <= 0) return 0;
+                                    return (((this.hargaJual - this.hargaBeli) / this.hargaBeli) * 100).toFixed(2);
+                                }
+                            }"
                             class="hover:bg-slate-50/80 transition-colors group">
                             <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->iteration }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div x-show="!editing">
+                                    @if($item->gambar)
+                                        <div class="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:scale-110 transition-transform"
+                                            @click="$dispatch('open-image-modal', '{{ asset($item->gambar) }}')">
+                                            <img src="{{ asset($item->gambar) }}" class="w-full h-full object-cover">
+                                        </div>
+                                    @else
+                                        <div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-100">
+                                            <i class="fas fa-image text-slate-300"></i>
+                                        </div>
+                                    @endif
+                                </div>
+                                <div x-show="editing" style="display: none">
+                                    <label class="block w-20 h-12 cursor-pointer border-2 border-dashed border-blue-300 hover:bg-blue-50 rounded-lg flex flex-col items-center justify-center text-blue-500 transition-all" title="Ganti Gambar">
+                                        <i class="fas fa-camera text-xs mb-1"></i>
+                                        <span class="text-[8px] font-bold uppercase">Ubah</span>
+                                        
+                                        {{-- PERHATIKAN ATRIBUT 'form' DI BAWAH INI --}}
+                                        <input type="file" 
+                                            name="gambar" 
+                                            form="form-update-{{ $item->id }}" 
+                                            accept="image/*"
+                                            class="hidden"
+                                            onchange="alert('Gambar dipilih! Klik tombol centang hijau untuk menyimpan.')"> 
+                                    </label>
+                                    @if($item->gambar)
+                                        <p class="text-[9px] text-slate-400 mt-1 text-center truncate w-20">Ada gambar</p>
+                                    @endif
+                                </div>
+                            </td>
                             <td class="px-6 py-4 whitespace-normal break-words max-w-[300px] font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>
                             
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -176,14 +235,69 @@
                             <td class="px-6 py-4 whitespace-nowrap text-center font-bold {{ $item->stok == 0 ? 'text-red-500' : 'text-slate-700' }}">
                                 {{ $item->stok }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">Rp {{ number_format($item->harga_beli_terakhir, 0, ',', '.') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500">Rp {{ number_format($item->harga_beli_terakhir, 0, ',', '.') }}</td>
                             <td class="px-6 py-4 whitespace-nowrap font-bold text-blue-600">Rp {{ number_format($item->stok * $item->harga_beli_terakhir, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-orange-600 font-bold">{{ $item->margin }}%</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-green-600 font-bold">Rp {{ number_format($item->harga_jual, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-blue-600 font-bold">Rp {{ number_format($item->harga_atas, 0, ',', '.') }}</td>
+                            
+                            <td class="px-6 py-4 whitespace-nowrap text-orange-600 font-bold">
+                                <span x-show="!editing"><span x-text="margin"></span>%</span>
+                                <span x-show="editing" style="display: none;" class="bg-orange-50 px-2 py-1 rounded border border-orange-200" x-text="margin + '%'"></span>
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap text-green-600 font-bold">
+                                <div x-show="!editing">Rp {{ number_format($item->harga_jual, 0, ',', '.') }}</div>
+                                <div x-show="editing" style="display: none;" class="flex items-center gap-1" x-data="{ displayJual: formatRupiah({{ $item->harga_jual }}) }">
+                                    <span class="text-xs">Rp</span>
+                                    <input type="text" 
+                                           class="w-24 p-1 border border-green-300 rounded text-xs bg-white text-green-700 focus:ring-1 focus:ring-green-500 font-bold"
+                                           x-model="displayJual"
+                                           @input="
+                                               let raw = $event.target.value.replace(/\D/g, '');
+                                               hargaJual = parseInt(raw) || 0;
+                                               displayJual = formatRupiah(hargaJual);
+                                           ">
+                                </div>
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap text-blue-600 font-bold">
+                                <div x-show="!editing">Rp {{ number_format($item->harga_atas, 0, ',', '.') }}</div>
+                                <div x-show="editing" style="display: none;" class="flex items-center gap-1" x-data="{ displayAtas: formatRupiah({{ $item->harga_atas }}) }">
+                                    <span class="text-xs">Rp</span>
+                                    <input type="text" 
+                                           class="w-24 p-1 border border-blue-300 rounded text-xs bg-white text-blue-700 focus:ring-1 focus:ring-blue-500 font-bold"
+                                           x-model="displayAtas"
+                                           @input="
+                                               let raw = $event.target.value.replace(/\D/g, '');
+                                               hargaAtas = parseInt(raw) || 0;
+                                               displayAtas = formatRupiah(hargaAtas);
+                                           ">
+                                </div>
+                            </td>
                             
                             {{-- UPDATE 3: Logika Tombol & Mengirim 'target_unit' --}}
                             <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    {{-- Tombol Edit / Simpan --}}
+                                    <button x-show="!editing" @click="editing = true" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center shadow-sm">
+                                        <i class="fas fa-edit text-xs"></i>
+                                    </button>
+
+                                    <div x-show="editing" style="display: none;" class="flex items-center gap-1">
+                                        <form id="form-update-{{ $item->id }}" action="{{ route('stok.update-price', $item->id) }}" method="POST" enctype="multipart/form-data">
+                                            @csrf
+                                            @method('PUT')
+                                            <input type="hidden" name="harga_jual" :value="hargaJual">
+                                            <input type="hidden" name="harga_atas" :value="hargaAtas">
+                                            {{-- Tombol submit --}}
+                                            <button type="submit" class="w-8 h-8 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-all flex items-center justify-center shadow-sm">
+                                                <i class="fas fa-check text-xs"></i>
+                                            </button>
+                                        </form>
+                                        {{-- Tombol Cancel --}}
+                                        <button @click="editing = false; hargaJual = {{ $item->harga_jual }}; hargaAtas = {{ $item->harga_atas }}" class="w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+                                    </div>
+
                                 @if($item->stok <= 0)
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">
                                         Kosong
@@ -191,10 +305,7 @@
 
                                 @elseif(!$item->is_base_unit)
                                     {{-- JIKA INI SATUAN BESAR (Pack/Dus) --}}
-                                    <div class="flex flex-col gap-2 items-center">
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
-                                            Ready
-                                        </span>
+                                    <div class="flex flex-col gap-1 items-center">
                                         {{-- Tombol Buka Pack --}}
                                         <button type="button"
                                                 @click="selectedTargetId = '{{ $targetMasterUnitId }}'; $dispatch('open-break-modal', { 
@@ -207,17 +318,18 @@
                                                     target_unit_id: '{{ $targetMasterUnitId }}',
                                                     has_base_unit: {{ $hasBaseUnit ? 'true' : 'false' }}
                                                 })"
-                                                class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-[10px] font-bold hover:bg-purple-200 border border-purple-200 flex items-center gap-1 transition-all shadow-sm">
-                                            <i class="fas fa-box-open"></i> BUKA {{ $item->masterUnit->nama ?? '-' }}
+                                                class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-[9px] font-bold hover:bg-purple-200 border border-purple-200 flex items-center gap-1 transition-all shadow-sm">
+                                            <i class="fas fa-box-open"></i> BUKA
                                         </button>
                                     </div>
 
                                 @else
                                     {{-- JIKA INI SATUAN KECIL (Eceran) --}}
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-600 border border-green-100">
-                                        Ready ({{ $item->masterUnit->nama ?? '-' }})
+                                        Ready
                                     </span>
                                 @endif
+                                </div>
                             </td>
                         </tr>
                         @empty
@@ -253,7 +365,7 @@
                 </div>
 
                 <div class="p-8 overflow-y-auto custom-scrollbar">
-                    <form id="addStockForm" action="{{ route('stok.store') }}" method="POST">
+                    <form id="addStockForm" action="{{ route('stok.store') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -340,6 +452,13 @@
                                 <p class="text-[9px] text-slate-400 mt-1">Pilih satuan utama (misal: Sak, Dus, Pack).</p>
                             </div>
 
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Foto Barang Utama (Opsional)</label>
+                                <input type="file" name="gambar" accept="image/*"
+                                       class="w-full bg-white border border-slate-300 rounded-lg text-xs p-2 file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100">
+                                <p class="text-[9px] text-slate-400 mt-1">Format: JPG, PNG. Maks: 2MB.</p>
+                            </div>
+
                             <div class="flex items-center gap-3 pt-6">
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="bisa_diecer" x-model="bisaDiecer" class="sr-only peer">
@@ -349,7 +468,7 @@
                             </div>
 
                             {{-- Form Eceran (Muncul jika dicentang) --}}
-                            <div x-show="bisaDiecer" x-transition class="col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
+                            <div x-show="bisaDiecer" x-transition class="col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
                                 <div class="relative" x-data="{ open: false }">
                                     <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">Satuan Eceran</label>
                                     <input type="text" 
@@ -393,8 +512,25 @@
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">Harga Atas Ecer</label>
-                                    <input type="number" name="ecer_harga_atas" placeholder="Rp 0" class="w-full bg-white border border-orange-200 rounded-lg text-sm p-2">
+                                    <input type="text"
+                                           x-data="{ displayEcerAtas: '' }"
+                                           x-model="displayEcerAtas"
+                                           @input="
+                                               let raw = $event.target.value.replace(/\D/g, '');
+                                               let num = parseInt(raw) || 0;
+                                               displayEcerAtas = formatRupiah(num);
+                                               $refs.ecerAtasHidden.value = num;
+                                           "
+                                           placeholder="Rp 0" 
+                                           class="w-full bg-white border border-orange-200 rounded-lg text-sm p-2">
+                                    <input type="hidden" name="ecer_harga_atas" x-ref="ecerAtasHidden" value="0">
                                     <p class="text-[9px] text-orange-400 mt-1">Opsional: Batas harga jual ecer.</p>
+                                </div>
+                                <div class="lg:col-span-1">
+                                    <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">Foto Eceran (Opsional)</label>
+                                    <input type="file" name="ecer_gambar" accept="image/*"
+                                           class="w-full bg-white border border-orange-200 rounded-lg text-xs p-1.5 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200">
+                                    <p class="text-[9px] text-orange-400 mt-1">Format: JPG, PNG. Maks: 2MB.</p>
                                 </div>
                             </div>
 
@@ -405,20 +541,41 @@
 
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Harga Beli Satuan</label>
-                                <input type="number" name="harga_beli" x-model.number="inputHargaBeli" placeholder="Rp 0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
+                                <input type="text" 
+                                       x-data="{ displayHargaBeli: '' }"
+                                       x-model="displayHargaBeli"
+                                       @input="
+                                           let raw = $event.target.value.replace(/\D/g, '');
+                                           inputHargaBeli = parseInt(raw) || 0;
+                                           displayHargaBeli = formatRupiah(inputHargaBeli);
+                                       "
+                                       placeholder="Rp 0" 
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
+                                <input type="hidden" name="harga_beli" :value="inputHargaBeli">
                             </div>
 
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Margin Keuntungan (%)</label>
                                 <input type="number" name="margin" x-model.number="inputMargin" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
                                 <p class="text-[10px] text-slate-400 mt-1">
-                                    Preview Harga Jual: <span class="font-bold">Rp <span x-text="Math.round(inputHargaBeli + (inputHargaBeli * inputMargin / 100)).toLocaleString('id-ID')"></span></span>
+                                    Preview Harga Jual: <span class="font-bold">Rp <span x-text="formatRupiah(Math.round(inputHargaBeli + (inputHargaBeli * inputMargin / 100)))"></span></span>
                                 </p>
                             </div>
 
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Harga Atas (Batas Harga Jual)</label>
-                                <input type="number" name="harga_atas" placeholder="Rp 0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
+                                <input type="text"
+                                       x-data="{ displayHargaAtas: '' }"
+                                       x-model="displayHargaAtas"
+                                       @input="
+                                           let raw = $event.target.value.replace(/\D/g, '');
+                                           let num = parseInt(raw) || 0;
+                                           displayHargaAtas = formatRupiah(num);
+                                           $refs.hargaAtasHidden.value = num;
+                                       "
+                                       placeholder="Rp 0" 
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
+                                <input type="hidden" name="harga_atas" x-ref="hargaAtasHidden" value="0">
                                 <p class="text-[9px] text-slate-400 mt-1">Opsional: Isi untuk menentukan batas atas harga jual.</p>
                             </div>
 

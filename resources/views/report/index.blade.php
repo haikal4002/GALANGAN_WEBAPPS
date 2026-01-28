@@ -57,15 +57,15 @@
             </span>
         </div>
         
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto w-full max-h-[500px] overflow-y-auto custom-scrollbar">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50 text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-200">
-                        <th class="px-6 py-4">Nama Barang</th>
-                        <th class="px-6 py-4 text-center">Total Terjual</th>
-                        <th class="px-6 py-4 text-right">Total Modal (HPP)</th>
-                        <th class="px-6 py-4 text-right">Total Jual (Omset)</th>
-                        <th class="px-6 py-4 text-right text-green-600">Profit / Laba</th>
+                        <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">Nama Barang</th>
+                        <th class="px-6 py-4 text-center sticky top-0 bg-slate-50 z-10">Total Terjual</th>
+                        <th class="px-6 py-4 text-right sticky top-0 bg-slate-50 z-10">Total Modal (HPP)</th>
+                        <th class="px-6 py-4 text-right sticky top-0 bg-slate-50 z-10">Total Jual (Omset)</th>
+                        <th class="px-6 py-4 text-right text-green-600 sticky top-0 bg-slate-50 z-10">Profit / Laba</th>
                     </tr>
                 </thead>
                 <tbody class="text-sm text-slate-700 divide-y divide-slate-100">

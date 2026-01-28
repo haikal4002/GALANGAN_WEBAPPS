@@ -47,20 +47,17 @@
             <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-20">
                 <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     <template x-for="product in filteredProducts" :key="product.id">
-                        <div class="bg-white border border-slate-200 rounded-2xl p-4 hover:shadow-lg hover:border-primary/50 transition-all cursor-pointer group flex flex-col justify-between h-full"
+                        <div class="bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md hover:border-primary/50 transition-all cursor-pointer group flex flex-col justify-between"
                              @click="addToCart(product)">
                             <div>
-                                <div class="flex justify-between items-start mb-3">
-                                    <h4 class="text-xs font-bold text-slate-700 uppercase leading-tight" x-text="product.name"></h4>
+                                <div class="flex justify-between items-start mb-2">
+                                    <h4 class="text-[12px] font-semibold text-slate-700 uppercase leading-tight" x-text="product.name"></h4>
                                 </div>
-                                <p class="text-primary font-bold text-sm mb-1" x-text="formatRupiah(product.price)"></p>
-                                <div class="flex items-center gap-2 mb-4">
-                                    <span class="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200" x-text="'Stok: ' + product.stock + ' ' + product.unit"></span>
+                                <p class="text-primary font-bold text-xs mb-1" x-text="formatRupiah(product.price)"></p>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="text-[9px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200" x-text="'Stok: ' + product.stock + ' ' + product.unit"></span>
                                 </div>
                             </div>
-                            <button class="w-full py-2 rounded-lg bg-slate-50 text-slate-400 font-bold text-lg group-hover:bg-primary group-hover:text-white transition-all flex items-center justify-center">
-                                <i class="fas fa-plus"></i>
-                            </button>
                         </div>
                     </template>
                 </div>
@@ -134,7 +131,16 @@
                 {{-- Input Cash --}}
                 <div x-show="paymentMethod === 'cash'">
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Uang Diterima (Rp)</label>
-                    <input type="number" x-model="cashReceived" class="w-full border-2 border-blue-200 rounded-xl px-4 py-3 text-lg font-bold text-slate-800 focus:outline-none focus:border-blue-500 transition-colors mb-4 placeholder-slate-300" placeholder="0">
+                    <input type="text"
+                           x-data="{ displayCash: '' }"
+                           x-model="displayCash"
+                           x-init="$watch('showPaymentModal', value => { if(value) displayCash = '' })"
+                           @input="
+                               let raw = $event.target.value.replace(/\D/g, '');
+                               cashReceived = parseInt(raw) || 0;
+                               displayCash = formatRupiah(cashReceived);
+                           "
+                           class="w-full border-2 border-blue-200 rounded-xl px-4 py-3 text-lg font-bold text-slate-800 focus:outline-none focus:border-blue-500 transition-colors mb-4 placeholder-slate-300" placeholder="0">
                     <div class="bg-slate-900 rounded-xl p-4 flex justify-between items-center text-white">
                         <span class="text-xs font-bold text-slate-400 uppercase">Kembalian</span>
                         <span class="text-xl font-bold text-green-400" x-text="formatRupiah(calculateChange())"></span>
@@ -297,8 +303,13 @@
 
             // --- COMPUTED ---
             get filteredProducts() {
-                if (this.search === '') return this.products;
-                return this.products.filter(p => p.name.toLowerCase().includes(this.search.toLowerCase()));
+                const q = (this.search || '').toString().trim().toLowerCase();
+                if (!q) return this.products;
+                const terms = q.split(/\s+/).filter(Boolean);
+                return this.products.filter(p => {
+                    const hay = (p.name || '').toString().toLowerCase();
+                    return terms.every(t => hay.includes(t));
+                });
             },
             get cartTotalItems() { return this.cart.reduce((t, i) => t + i.qty, 0); },
             get cartTotalPrice() { return this.cart.reduce((t, i) => t + (i.price * i.qty), 0); },

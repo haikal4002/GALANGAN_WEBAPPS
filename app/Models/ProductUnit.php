@@ -15,7 +15,8 @@ class ProductUnit extends Model
         'harga_beli_terakhir',
         'margin',
         'harga_jual',
-        'harga_atas'
+        'harga_atas',
+        'gambar'
     ];
 
     // Relasi ke Induk (Master Product)

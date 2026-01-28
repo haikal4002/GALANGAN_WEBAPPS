@@ -25,8 +25,21 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased">
 
-    <div class="min-h-screen flex flex-col" x-data="{ searchQuery: '' }">
+    <div class="min-h-screen flex flex-col" x-data="{ searchQuery: '', showImageModal: false, imageSrc: '' }">
         
+        <!-- MODAL VIEW GAMBAR -->
+        <div x-show="showImageModal" 
+             style="display: none;"
+             class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+             @click="showImageModal = false">
+            <div class="relative max-w-4xl max-h-full" @click.stop>
+                <img :src="imageSrc" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl border-4 border-white">
+                <button class="absolute -top-4 -right-4 bg-white text-slate-800 w-10 h-10 rounded-full flex items-center justify-center shadow-lg" @click="showImageModal = false">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+
         <!-- Header -->
         <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -73,6 +86,7 @@
                             <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200">
                                 <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">No</th>
                                 <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Nama Barang</th>
+                                <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Gambar</th>
                                 <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Satuan</th>
                                 <th class="px-6 py-4 whitespace-nowrap text-center sticky top-0 bg-slate-50 z-10">Unit Ecer</th>
                                 <th class="px-6 py-4 whitespace-nowrap text-center sticky top-0 bg-slate-50 z-10">Stok Tersedia</th>
@@ -80,15 +94,27 @@
                                 <th class="px-6 py-4 whitespace-nowrap text-blue-600 sticky top-0 bg-slate-50 z-10">Harga Atas</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
+                        <tbody class="divide-y divide-slate-100 text-xs text-slate-700 font-medium">
                             @forelse($units as $item)
                             <tr x-show="searchQuery === '' || searchQuery.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.nama.includes(word))" 
                                 data-nama="{{ strtolower($item->masterProduct->nama ?? '') }}"
                                 class="hover:bg-slate-50/50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->iteration }}</td>
-                                <td class="px-6 py-4 whitespace-normal break-words max-w-[300px] font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-[10px]">{{ $loop->iteration }}</td>
+                                <td class="px-6 py-4 whitespace-normal break-words max-w-[250px] font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-bold text-slate-600">
+                                    @if($item->gambar)
+                                        <div class="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:scale-110 transition-transform"
+                                             @click="imageSrc = '{{ asset($item->gambar) }}'; showImageModal = true">
+                                            <img src="{{ asset($item->gambar) }}" class="w-full h-full object-cover">
+                                        </div>
+                                    @else
+                                        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-100">
+                                            <i class="fas fa-image text-slate-300"></i>
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-[10px] font-bold text-slate-600">
                                         {{ $item->masterUnit->nama ?? '-' }}
                                     </span>
                                 </td>
@@ -111,7 +137,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-10 text-center text-slate-400">Belum ada data stok yang tersedia.</td>
+                                <td colspan="8" class="px-6 py-10 text-center text-slate-400">Belum ada data stok yang tersedia.</td>
                             </tr>
                             @endforelse
                         </tbody>

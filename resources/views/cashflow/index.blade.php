@@ -84,8 +84,18 @@
                     </div>
 
                     {{-- Nominal --}}
-                    <div class="md:col-span-3">
-                        <input type="number" name="amount" placeholder="Nominal Rp 0" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold p-3 focus:outline-none focus:border-primary" required>
+                    <div class="md:col-span-3" x-data="{ displayAmount: '' }">
+                        <input type="text" 
+                               x-model="displayAmount"
+                               @input="
+                                   let raw = $event.target.value.replace(/\D/g, '');
+                                   let num = parseInt(raw) || 0;
+                                   displayAmount = formatRupiah(num);
+                                   $refs.amountHidden.value = num;
+                               "
+                               placeholder="Nominal Rp 0" 
+                               class="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold p-3 focus:outline-none focus:border-primary" required>
+                        <input type="hidden" name="amount" x-ref="amountHidden">
                     </div>
 
                     {{-- Tombol --}}
@@ -100,17 +110,17 @@
 
         {{-- 2. TABEL MUTASI --}}
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto w-full max-h-[600px] overflow-y-auto custom-scrollbar">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50 text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-200">
-                            <th class="px-6 py-4">No</th>
-                            <th class="px-6 py-4">Tanggal</th>
-                            <th class="px-6 py-4 text-center">Kode</th>
-                            <th class="px-6 py-4">Keterangan</th>
-                            <th class="px-6 py-4 text-right text-green-600">Debit (Masuk)</th>
-                            <th class="px-6 py-4 text-right text-red-500">Kredit (Keluar)</th>
-                            <th class="px-6 py-4 text-right font-extrabold text-slate-700">Saldo</th>
+                            <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">No</th>
+                            <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">Tanggal</th>
+                            <th class="px-6 py-4 text-center sticky top-0 bg-slate-50 z-10">Kode</th>
+                            <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">Keterangan</th>
+                            <th class="px-6 py-4 text-right text-green-600 sticky top-0 bg-slate-50 z-10">Debit (Masuk)</th>
+                            <th class="px-6 py-4 text-right text-red-500 sticky top-0 bg-slate-50 z-10">Kredit (Keluar)</th>
+                            <th class="px-6 py-4 text-right font-extrabold text-slate-700 sticky top-0 bg-slate-50 z-10">Saldo</th>
                         </tr>
                     </thead>
                     <tbody class="text-xs text-slate-600 divide-y divide-slate-100">
@@ -169,12 +179,12 @@
             </div>
             
             <div class="p-2 overflow-y-auto max-h-[500px] custom-scrollbar">
-                <table class="w-full text-xs">
+                <table class="w-full text-xs border-separate border-spacing-0">
                     <thead class="text-slate-500 font-bold border-b border-slate-700">
                         <tr>
-                            <th class="py-3 pl-4 text-left">Bulan</th>
-                            <th class="py-3 text-right">Omset</th>
-                            <th class="py-3 pr-4 text-right">Profit (Cash)</th>
+                            <th class="py-3 pl-4 text-left sticky top-0 bg-[#0B1120] z-10">Bulan</th>
+                            <th class="py-3 text-right sticky top-0 bg-[#0B1120] z-10">Omset</th>
+                            <th class="py-3 pr-4 text-right sticky top-0 bg-[#0B1120] z-10">Profit (Cash)</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-800">

@@ -52,7 +52,19 @@
                     {{-- Nominal --}}
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nominal (Rp)</label>
-                        <input type="number" name="amount" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-red-500" required>
+                        <div x-data="{ displayAmount: '' }">
+                            <input type="text" 
+                                   x-model="displayAmount"
+                                   @input="
+                                       let raw = $event.target.value.replace(/\D/g, '');
+                                       let num = parseInt(raw) || 0;
+                                       displayAmount = formatRupiah(num);
+                                       $refs.amountHidden.value = num;
+                                   "
+                                   placeholder="0" 
+                                   class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-red-500" required>
+                            <input type="hidden" name="amount" x-ref="amountHidden">
+                        </div>
                     </div>
 
                     <button type="submit" class="w-full py-3 bg-[#E11D48] hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-500/30 transition-all">
@@ -93,15 +105,15 @@
             <button @click="showCodeModal = true" class="text-[10px] font-bold text-blue-600 hover:underline"># KELOLA KODE</button>
         </div>
         
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto w-full max-h-[500px] overflow-y-auto custom-scrollbar">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50 text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-200">
-                        <th class="px-6 py-4">No</th>
-                        <th class="px-6 py-4">Tanggal</th>
-                        <th class="px-6 py-4 text-center">Kode</th>
-                        <th class="px-6 py-4">Keterangan</th>
-                        <th class="px-6 py-4 text-right text-red-500">Nominal</th>
+                        <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">No</th>
+                        <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">Tanggal</th>
+                        <th class="px-6 py-4 text-center sticky top-0 bg-slate-50 z-10">Kode</th>
+                        <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">Keterangan</th>
+                        <th class="px-6 py-4 text-right text-red-500 sticky top-0 bg-slate-50 z-10">Nominal</th>
                     </tr>
                 </thead>
                 <tbody class="text-xs text-slate-600 divide-y divide-slate-100">

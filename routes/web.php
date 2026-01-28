@@ -42,6 +42,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/stok', [StockItemController::class, 'index'])->name('stok.index');
     Route::get('/stok/{id}', [StockItemController::class, 'show'])->name('stok.show');
+    Route::put('/stok/{id}/update', [StockItemController::class, 'updateItem'])->name('stok.update-price');
     Route::post('/stok/break', [StockItemController::class, 'breakUnit'])->name('stok.break');
     Route::put('/pembelian/{id}/pay', [StockItemController::class, 'markAsPaid'])->name('purchase.pay');
 

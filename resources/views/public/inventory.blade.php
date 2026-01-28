@@ -82,7 +82,8 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
                             @forelse($units as $item)
-                            <tr x-show="searchQuery === '' || '{{ strtolower($item->masterProduct->nama ?? '') }}'.includes(searchQuery.toLowerCase())" 
+                            <tr x-show="searchQuery === '' || $el.dataset.nama.includes(searchQuery.toLowerCase())" 
+                                data-nama="{{ strtolower($item->masterProduct->nama ?? '') }}"
                                 class="hover:bg-slate-50/50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->iteration }}</td>
                                 <td class="px-6 py-4 whitespace-normal break-words max-w-[300px] font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>

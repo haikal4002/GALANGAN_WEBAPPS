@@ -63,6 +63,15 @@ class StockItemController extends Controller
         return redirect()->back()->with('success', 'Master Barang berhasil ditambahkan!');
     }
 
+    // Update Master Product
+    public function updateMasterProduct(Request $request, $id)
+    {
+        $request->validate(['nama' => 'required|string|unique:master_products,nama,' . $id . '|max:255']);
+        $product = MasterProduct::findOrFail($id);
+        $product->update(['nama' => strtoupper($request->nama)]);
+        return redirect()->back()->with('success', 'Master Barang berhasil diperbarui!');
+    }
+
     // Store Master Unit
     public function storeMasterUnit(Request $request)
     {
@@ -147,6 +156,25 @@ class StockItemController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Supplier berhasil ditambahkan!');
+    }
+
+    // Update Supplier
+    public function updateSupplier(Request $request, $id)
+    {
+        $request->validate([
+            'nama' => 'required|string|unique:suppliers,nama,' . $id . '|max:255',
+            'kontak' => 'nullable|string|max:50',
+            'alamat' => 'nullable|string|max:255',
+        ]);
+
+        $supplier = Supplier::findOrFail($id);
+        $supplier->update([
+            'nama' => strtoupper($request->nama),
+            'kontak' => $request->kontak ?? '-',
+            'alamat' => $request->alamat ?? '-'
+        ]);
+
+        return redirect()->back()->with('success', 'Supplier berhasil diperbarui!');
     }
 
     // --- STORE METHOD (UPDATED FOR MASTER UNITS) ---

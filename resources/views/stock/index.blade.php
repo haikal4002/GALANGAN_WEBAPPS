@@ -61,7 +61,14 @@
             bisaDiecer: false,
             inputKonversi: 1,
             ecerMasterUnitId: '',
-            ecerMargin: 20
+            ecerMargin: 20,
+            searchSupplierBelanja: '',
+            selectedSupplierId: '',
+            searchProductBelanja: '',
+            selectedProductId: '',
+            searchUnitUtamaBelanja: '',
+            selectedUnitUtamaId: '',
+            searchUnitEcerBelanja: ''
          }"
          @open-manage-modal.window="showManageModal = true"
          @open-unit-modal.window="showUnitModal = true"
@@ -108,21 +115,21 @@
                     <i class="fas fa-th-large text-primary"></i> INVENTORI REAL-TIME
                 </h4>
             </div>
-            <div class="overflow-x-auto w-full">
+            <div class="overflow-x-auto w-full max-h-[calc(100vh-250px)] overflow-y-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200">
-                            <th class="px-6 py-4 whitespace-nowrap">No</th>
-                            <th class="px-6 py-4 whitespace-nowrap">Nama Barang</th>
-                            <th class="px-6 py-4 whitespace-nowrap">Satuan</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-center">Unit Ecer</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-center">Stok</th>
-                            <th class="px-6 py-4 whitespace-nowrap">HPP Terakhir</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-blue-500">Nominal</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-orange-500">Margin</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-green-600">Harga Jual</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-blue-600">Harga Atas</th>
-                            <th class="px-6 py-4 whitespace-nowrap text-center">Aksi / Status</th>
+                            <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">No</th>
+                            <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Nama Barang</th>
+                            <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">Satuan</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-center sticky top-0 bg-slate-50 z-10">Unit Ecer</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-center sticky top-0 bg-slate-50 z-10">Stok</th>
+                            <th class="px-6 py-4 whitespace-nowrap sticky top-0 bg-slate-50 z-10">HPP Terakhir</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-blue-500 sticky top-0 bg-slate-50 z-10">Nominal</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-orange-500 sticky top-0 bg-slate-50 z-10">Margin</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-green-600 sticky top-0 bg-slate-50 z-10">Harga Jual</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-blue-600 sticky top-0 bg-slate-50 z-10">Harga Atas</th>
+                            <th class="px-6 py-4 whitespace-nowrap text-center sticky top-0 bg-slate-50 z-10">Aksi / Status</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
@@ -146,10 +153,11 @@
                             $targetMasterUnitId = $baseUnit ? $baseUnit->master_unit_id : '';
                         @endphp
 
-                        <tr x-show="searchQuery === '' || '{{ strtolower($item->masterProduct->nama ?? '') }}'.includes(searchQuery.toLowerCase())" 
+                        <tr x-show="searchQuery === '' || searchQuery.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.nama.includes(word))" 
+                            data-nama="{{ strtolower($item->masterProduct->nama ?? '') }}"
                             class="hover:bg-slate-50/80 transition-colors group">
                             <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->iteration }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>
+                            <td class="px-6 py-4 whitespace-normal break-words max-w-[300px] font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>
                             
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-bold text-slate-600">
@@ -256,13 +264,27 @@
                                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Tanggal Faktur</label>
                                         <input type="date" name="tanggal" value="{{ date('Y-m-d') }}" class="w-full bg-white border border-slate-300 rounded-lg text-sm p-2">
                                     </div>
-                                    <div>
+                                    <div class="relative" x-data="{ open: false }">
                                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Supplier</label>
-                                        <select name="supplier_id" class="w-full bg-white border border-slate-300 rounded-lg text-sm p-2">
+                                        <input type="text" 
+                                               x-model="searchSupplierBelanja" 
+                                               @focus="open = true"
+                                               @click.away="open = false"
+                                               placeholder="Cari Supplier..." 
+                                               class="w-full bg-white border border-slate-300 rounded-lg text-sm p-2 focus:ring-2 focus:ring-primary/20">
+                                        
+                                        <div x-show="open && searchSupplierBelanja.trim().length > 0" 
+                                             class="absolute z-[100] mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                                             @foreach($suppliers as $sup)
-                                                <option value="{{ $sup->id }}">{{ $sup->nama }}</option>
+                                                <div data-search="{{ strtolower($sup->nama) }}"
+                                                     x-show="searchSupplierBelanja.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.search.includes(word))"
+                                                     @click="selectedSupplierId = '{{ $sup->id }}'; searchSupplierBelanja = '{{ addslashes($sup->nama) }}'; open = false"
+                                                     class="px-4 py-2 text-sm hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none uppercase font-semibold text-slate-700">
+                                                    {{ $sup->nama }}
+                                                </div>
                                             @endforeach
-                                        </select>
+                                        </div>
+                                        <input type="hidden" name="supplier_id" :value="selectedSupplierId">
                                     </div>
                                     <div>
                                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">No. Resi / Nota</label>
@@ -271,23 +293,50 @@
                                 </div>
                             </div>
 
-                            <div>
+                            <div class="relative" x-data="{ open: false }">
                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Barang (Master)</label>
-                                <select name="master_product_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
+                                <input type="text" 
+                                       x-model="searchProductBelanja" 
+                                       @focus="open = true"
+                                       @click.away="open = false"
+                                       placeholder="Cari Barang..." 
+                                       class="w-full bg-white border border-slate-300 rounded-lg text-sm p-2.5 focus:ring-2 focus:ring-primary/20">
+                                
+                                <div x-show="open && searchProductBelanja.trim().length > 0" 
+                                     class="absolute z-[100] mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                                     @foreach($masterProducts as $product)
-                                        <option value="{{ $product->id }}">{{ $product->nama }}</option>
+                                        <div data-search="{{ strtolower($product->nama) }}"
+                                             x-show="searchProductBelanja.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.search.includes(word))"
+                                             @click="selectedProductId = '{{ $product->id }}'; searchProductBelanja = '{{ addslashes($product->nama) }}'; open = false"
+                                             class="px-4 py-2 text-sm hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none uppercase font-semibold text-slate-700">
+                                            {{ $product->nama }}
+                                        </div>
                                     @endforeach
-                                </select>
+                                </div>
+                                <input type="hidden" name="master_product_id" :value="selectedProductId">
                             </div>
                             
-                            <div>
+                            <div class="relative" x-data="{ open: false }">
                                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-2">Satuan (Unit Utama)</label>
-                                <select name="master_unit_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm p-2.5">
-                                    <option value="">-- Pilih Satuan --</option>
+                                <input type="text" 
+                                       x-model="searchUnitUtamaBelanja" 
+                                       @focus="open = true"
+                                       @click.away="open = false"
+                                       placeholder="Cari Satuan..." 
+                                       class="w-full bg-white border border-slate-300 rounded-lg text-sm p-2.5 focus:ring-2 focus:ring-primary/20">
+                                
+                                <div x-show="open && searchUnitUtamaBelanja.trim().length > 0" 
+                                     class="absolute z-[100] mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                                     @foreach($allUnits as $unit)
-                                        <option value="{{ $unit->id }}">{{ $unit->nama }}</option>
+                                        <div data-search="{{ strtolower($unit->nama) }}"
+                                             x-show="searchUnitUtamaBelanja.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.search.includes(word))"
+                                             @click="selectedUnitUtamaId = '{{ $unit->id }}'; searchUnitUtamaBelanja = '{{ addslashes($unit->nama) }}'; open = false"
+                                             class="px-4 py-2 text-sm hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-none uppercase font-semibold text-slate-700">
+                                            {{ $unit->nama }}
+                                        </div>
                                     @endforeach
-                                </select>
+                                </div>
+                                <input type="hidden" name="master_unit_id" :value="selectedUnitUtamaId">
                                 <p class="text-[9px] text-slate-400 mt-1">Pilih satuan utama (misal: Sak, Dus, Pack).</p>
                             </div>
 
@@ -301,14 +350,27 @@
 
                             {{-- Form Eceran (Muncul jika dicentang) --}}
                             <div x-show="bisaDiecer" x-transition class="col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
-                                <div>
+                                <div class="relative" x-data="{ open: false }">
                                     <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">Satuan Eceran</label>
-                                    <select name="ecer_master_unit_id" x-model="ecerMasterUnitId" class="w-full bg-white border border-orange-200 rounded-lg text-sm p-2">
-                                        <option value="">-- Pilih Satuan Ecer --</option>
+                                    <input type="text" 
+                                           x-model="searchUnitEcerBelanja" 
+                                           @focus="open = true"
+                                           @click.away="open = false"
+                                           placeholder="Cari Satuan Ecer..." 
+                                           class="w-full bg-white border border-orange-200 rounded-lg text-sm p-2 focus:ring-2 focus:ring-orange-300">
+                                    
+                                    <div x-show="open && searchUnitEcerBelanja.trim().length > 0" 
+                                         class="absolute z-[100] mt-1 w-full bg-white border border-orange-100 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                                         @foreach($allUnits as $unit)
-                                            <option value="{{ $unit->id }}">{{ $unit->nama }}</option>
+                                            <div data-search="{{ strtolower($unit->nama) }}"
+                                                 x-show="searchUnitEcerBelanja.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.search.includes(word))"
+                                                 @click="ecerMasterUnitId = '{{ $unit->id }}'; searchUnitEcerBelanja = '{{ addslashes($unit->nama) }}'; open = false"
+                                                 class="px-4 py-2 text-sm hover:bg-orange-50 cursor-pointer border-b border-orange-50 last:border-none uppercase font-semibold text-orange-700">
+                                                {{ $unit->nama }}
+                                            </div>
                                         @endforeach
-                                    </select>
+                                    </div>
+                                    <input type="hidden" name="ecer_master_unit_id" :value="ecerMasterUnitId">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-orange-600 uppercase mb-2">Isi per Kemasan</label>

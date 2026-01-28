@@ -30,12 +30,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/master-stock', [StockItemController::class, 'index'])->name('stok.index');
     Route::post('/master-stock', [StockItemController::class, 'store'])->name('stok.store');
     Route::post('/master-product', [StockItemController::class, 'storeMasterProduct'])->name('master-product.store');
+    Route::put('/master-product/{id}', [StockItemController::class, 'updateMasterProduct'])->name('master-product.update');
     Route::delete('/master-product/{id}', [StockItemController::class, 'destroyMasterProduct'])->name('master-product.destroy');
     Route::post('/master-unit', [StockItemController::class, 'storeMasterUnit'])->name('master-unit.store');
     Route::put('/master-unit/{id}', [StockItemController::class, 'updateMasterUnit'])->name('master-unit.update');
     Route::delete('/master-unit/{id}', [StockItemController::class, 'destroyMasterUnit'])->name('master-unit.destroy');
 
     Route::post('/supplier', [StockItemController::class, 'storeSupplier'])->name('supplier.store');
+    Route::put('/supplier/{id}', [StockItemController::class, 'updateSupplier'])->name('supplier.update');
     Route::delete('/supplier/{id}', [StockItemController::class, 'destroySupplier'])->name('supplier.destroy');
 
     Route::get('/stok', [StockItemController::class, 'index'])->name('stok.index');

@@ -43,10 +43,37 @@
 
             <div class="max-h-64 overflow-y-auto pr-1 space-y-2 no-scrollbar">
                 @foreach($masterProducts as $product)
-                    <div class="bg-slate-50 border border-slate-100 p-3 rounded-lg flex justify-between items-center group hover:bg-white hover:border-orange-200 transition-all"
-                         x-show="'{{ strtoupper($product->nama) }}'.includes(searchQuery.toUpperCase())">
-                        <span class="text-xs font-bold text-slate-700 uppercase">{{ $product->nama }}</span>
-                        <i class="fas fa-box text-slate-300 group-hover:text-primary transition-colors text-xs"></i>
+                    <div class="bg-slate-50 border border-slate-100 p-3 rounded-lg group hover:bg-white hover:border-orange-200 transition-all"
+                         x-data="{ editing: false, nama: '{{ addslashes($product->nama) }}' }"
+                         data-search="{{ strtolower($product->nama) }}"
+                         x-show="searchQuery === '' || searchQuery.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.search.includes(word))">
+                        
+                        {{-- Mode Display --}}
+                        <div x-show="!editing" class="flex justify-between items-center w-full">
+                            <span class="text-xs font-bold text-slate-700 uppercase">{{ $product->nama }}</span>
+                            <div class="flex items-center gap-2">
+                                <button @click="editing = true" class="text-slate-400 hover:text-blue-500 transition-colors">
+                                    <i class="fas fa-edit text-[10px]"></i>
+                                </button>
+                                <i class="fas fa-box text-slate-300 group-hover:text-primary transition-colors text-xs"></i>
+                            </div>
+                        </div>
+
+                        {{-- Mode Edit --}}
+                        <div x-show="editing" style="display: none;">
+                            <form action="{{ route('master-product.update', $product->id) }}" method="POST" class="flex gap-2">
+                                @csrf
+                                @method('PUT')
+                                <input type="text" name="nama" x-model="nama" required 
+                                       class="flex-1 bg-white border border-blue-300 text-slate-700 text-xs rounded-md p-1.5 focus:ring-1 focus:ring-blue-500 uppercase">
+                                <button type="submit" class="text-green-600 hover:text-green-700 p-1">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button type="button" @click="editing = false; nama = '{{ $product->nama }}'" class="text-red-500 hover:text-red-600 p-1">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 @endforeach
                 @if($masterProducts->isEmpty())
@@ -127,24 +154,54 @@
 
             <div class="max-h-64 overflow-y-auto pr-1 space-y-2 no-scrollbar">
                 @foreach($suppliers as $supplier)
-                    <div class="bg-white border border-slate-100 p-3 rounded-lg flex justify-between items-start group hover:border-blue-300 hover:shadow-md transition-all cursor-default"
-                         x-show="'{{ strtoupper($supplier->nama) }}'.includes(searchSupplier.toUpperCase())">
+                    <div class="bg-white border border-slate-100 p-3 rounded-lg group hover:border-blue-300 hover:shadow-md transition-all cursor-default"
+                         data-search="{{ strtolower($supplier->nama) }}"
+                         x-show="searchSupplier === '' || searchSupplier.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.search.includes(word))"
+                         x-data="{ editing: false, nama: '{{ addslashes($supplier->nama) }}', kontak: '{{ addslashes($supplier->kontak) }}', alamat: '{{ addslashes($supplier->alamat) }}' }">
                         
-                        <div>
-                            <h4 class="text-xs font-bold text-slate-700 uppercase mb-1">{{ $supplier->nama }}</h4>
-                            
-                            <div class="flex flex-col gap-0.5">
-                                <span class="text-[10px] text-slate-500 flex items-center gap-1">
-                                    <i class="fas fa-phone-alt text-[9px] w-3"></i> {{ $supplier->kontak }}
-                                </span>
-                                <span class="text-[10px] text-slate-500 flex items-center gap-1">
-                                    <i class="fas fa-map-marker-alt text-[9px] w-3"></i> {{ Str::limit($supplier->alamat, 25) }}
-                                </span>
+                        {{-- Mode Display --}}
+                        <div x-show="!editing" class="flex justify-between items-start w-full">
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-700 uppercase mb-1">{{ $supplier->nama }}</h4>
+                                
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="text-[10px] text-slate-500 flex items-center gap-1">
+                                        <i class="fas fa-phone-alt text-[9px] w-3"></i> {{ $supplier->kontak }}
+                                    </span>
+                                    <span class="text-[10px] text-slate-500 flex items-center gap-1">
+                                        <i class="fas fa-map-marker-alt text-[9px] w-3"></i> {{ Str::limit($supplier->alamat, 25) }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col items-end gap-2">
+                                <button @click="editing = true" class="text-slate-300 hover:text-blue-500 transition-colors">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </button>
+                                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                                    <i class="fas fa-building text-xs"></i>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                            <i class="fas fa-building text-xs"></i>
+                        {{-- Mode Edit --}}
+                        <div x-show="editing" style="display: none;" class="w-full">
+                            <form action="{{ route('supplier.update', $supplier->id) }}" method="POST" class="space-y-2">
+                                @csrf
+                                @method('PUT')
+                                <input type="text" name="nama" x-model="nama" required 
+                                       class="w-full bg-white border border-blue-300 text-slate-700 text-xs rounded p-1.5 focus:ring-1 focus:ring-blue-500 uppercase">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="text" name="kontak" x-model="kontak" 
+                                           class="w-full bg-white border border-blue-300 text-slate-700 text-[10px] rounded p-1.5">
+                                    <input type="text" name="alamat" x-model="alamat" 
+                                           class="w-full bg-white border border-blue-300 text-slate-700 text-[10px] rounded p-1.5">
+                                </div>
+                                <div class="flex justify-end gap-2 mt-1">
+                                    <button type="submit" class="text-green-600 hover:text-green-700 text-xs font-bold">SIMPAN</button>
+                                    <button type="button" @click="editing = false" class="text-red-500 hover:text-red-600 text-xs font-bold">BATAL</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 @endforeach
@@ -209,8 +266,9 @@
             <div class="max-h-64 overflow-y-auto pr-1 space-y-2 no-scrollbar">
                 @foreach($allUnits as $unit)
                     <div class="bg-slate-50 border border-slate-100 p-3 rounded-lg flex justify-between items-center group hover:bg-white hover:border-teal-200 transition-all"
-                         x-show="'{{ strtoupper($unit->nama) }}'.includes(searchUnit.toUpperCase())"
-                         x-data="{ editing: false, unitName: '{{ $unit->nama }}' }">
+                         data-search="{{ strtolower($unit->nama) }}"
+                         x-show="searchUnit === '' || searchUnit.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.search.includes(word))"
+                         x-data="{ editing: false, unitName: '{{ addslashes($unit->nama) }}' }">
                         
                         <div class="flex-1">
                             <template x-if="!editing">

@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\DB;
 
 class CashflowController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         \App::setLocale('id');
+
+        $searchQuery = $request->query('q');
 
         // 1. Hitung Saldo Saat Ini (Total Debit - Total Kredit)
         $totalDebit = Cashflow::sum('debit');
@@ -29,8 +31,17 @@ class CashflowController extends Controller
             ->sum(DB::raw('debit - kredit'));
 
         // 3. Ambil Data Mutasi (Tabel Utama)
-        // Kita ambil 100 transaksi terakhir
-        $cashflows = Cashflow::with('transactionCode')
+        // Kita ambil 100 transaksi terakhir, kecualikan kode khusus 'OUT-LAINYA'
+        $cashflowsQuery = Cashflow::with('transactionCode')
+            ->whereHas('transactionCode', function ($q) {
+                $q->where('code', '!=', 'OUT-LAINYA');
+            });
+
+        if (!empty($searchQuery)) {
+            $cashflowsQuery->where('keterangan', 'like', '%' . $searchQuery . '%');
+        }
+
+        $cashflows = $cashflowsQuery
             ->orderBy('tanggal', 'desc')
             ->orderBy('id', 'desc')
             ->limit(100)
@@ -65,8 +76,10 @@ class CashflowController extends Controller
                 return $item;
             });
 
-        // 5. Daftar Kode Transaksi untuk Dropdown
-        $codes = TransactionCode::orderBy('code', 'asc')->get();
+        // 5. Daftar Kode Transaksi untuk Dropdown (sembunyikan kode khusus 'OUT-LAINYA')
+        $codes = TransactionCode::orderBy('code', 'asc')
+            ->where('code', '!=', 'OUT-LAINYA')
+            ->get();
 
         return view('cashflow.index', compact(
             'saldoSaatIni',

@@ -9,23 +9,36 @@ use Carbon\Carbon;
 
 class ExpenseController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // 1. Ambil Total Pengeluaran Bulan Ini (Semua yang kredit > 0)
-        $totalExpense = Cashflow::whereYear('tanggal', Carbon::now()->year)
+        $searchQuery = $request->query('q');
+        // 1. Ambil Total Pengeluaran Bulan Ini untuk kode OUT-LAINYA saja
+        $totalExpense = Cashflow::whereHas('transactionCode', function ($q) {
+            $q->where('code', 'OUT-LAINYA');
+        })
+            ->whereYear('tanggal', Carbon::now()->year)
             ->whereMonth('tanggal', Carbon::now()->month)
             ->sum('kredit');
 
-        // 2. Ambil Riwayat Pengeluaran (Limit 50 terakhir)
-        $expenses = Cashflow::with('transactionCode')
+        // 2. Ambil Riwayat Pengeluaran (Limit 50 terakhir) - hanya kode OUT-LAINYA
+        $expensesQuery = Cashflow::with('transactionCode')
             ->where('kredit', '>', 0) // Hanya pengeluaran
+            ->whereHas('transactionCode', function ($q) {
+                $q->where('code', 'OUT-LAINYA');
+            });
+
+        if (!empty($searchQuery)) {
+            $expensesQuery->where('keterangan', 'like', '%' . $searchQuery . '%');
+        }
+
+        $expenses = $expensesQuery
             ->orderBy('tanggal', 'desc')
             ->orderBy('id', 'desc')
             ->limit(50)
             ->get();
 
-        // 3. Ambil Daftar Kode Transaksi untuk Dropdown & Modal
-        $codes = TransactionCode::orderBy('code', 'asc')->get();
+        // 3. Ambil Daftar Kode Transaksi untuk Dropdown & Modal (hanya OUT-LAINYA untuk form)
+        $codes = TransactionCode::where('code', 'OUT-LAINYA')->orderBy('code', 'asc')->get();
 
         return view('expenses.index', compact('totalExpense', 'expenses', 'codes'));
     }
@@ -56,16 +69,19 @@ class ExpenseController extends Controller
     // Tambah Kode Baru
     public function storeCode(Request $request)
     {
+
         $request->validate([
             'code' => 'required|string|unique:transaction_codes,code',
             'label' => 'required|string|max:50',
             'color' => 'required|string', // danger, success, primary, etc
+            'kategori' => 'required|in:pemasukan,pengeluaran',
         ]);
 
         TransactionCode::create([
             'code' => strtoupper($request->code),
             'label' => strtoupper($request->label),
-            'color' => $request->color
+            'color' => $request->color,
+            'kategori' => $request->kategori,
         ]);
 
         return redirect()->back()->with('success', 'Kategori transaksi berhasil ditambahkan!');

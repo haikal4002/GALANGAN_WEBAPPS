@@ -6,6 +6,14 @@
     <i class="fas fa-wallet text-primary mr-2"></i> CASHFLOW VIEW
 @endsection
 
+@section('header-right')
+    <form method="GET" action="{{ route('cashflow.index') }}" class="relative hidden md:block">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-search text-slate-400 text-xs"></i>
+        </span>
+        <input name="q" type="text" value="{{ request('q') }}" placeholder="Cari Keterangan..." class="w-72 pl-9 pr-4 py-2 bg-slate-100/50 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all placeholder-slate-400">
+    </form>
+@endsection
 @section('content')
 
 <div x-data="{ showCodeModal: false }">
@@ -242,6 +250,14 @@
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Kategori</label>
                         <input type="text" name="label" placeholder="Ex: Sewa Lahan" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-primary focus:outline-none" required>
                     </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Kategori</label>
+                    <select name="kategori" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" required>
+                        <option value="pemasukan" selected>Pemasukan</option>
+                        <option value="pengeluaran">Pengeluaran</option>
+                    </select>
                 </div>
 
                 {{-- Pilihan Warna --}}

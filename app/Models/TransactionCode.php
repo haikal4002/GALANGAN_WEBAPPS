@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class TransactionCode extends Model
 {
-    protected $fillable = ['code', 'label', 'color'];
+    protected $fillable = ['code', 'label', 'color', 'kategori'];
 }

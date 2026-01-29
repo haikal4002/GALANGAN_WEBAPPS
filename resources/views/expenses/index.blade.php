@@ -6,6 +6,15 @@
     <i class="fas fa-money-bill-wave text-primary mr-2"></i> EXPENSES VIEW
 @endsection
 
+@section('header-right')
+    <form method="GET" action="{{ route('expenses.index') }}" class="relative hidden md:block">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-search text-slate-400 text-xs"></i>
+        </span>
+        <input name="q" type="text" value="{{ request('q') }}" placeholder="Cari Keterangan..." class="w-72 pl-9 pr-4 py-2 bg-slate-100/50 border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all placeholder-slate-400">
+    </form>
+@endsection
+
 @section('content')
 
 <div x-data="{ showCodeModal: false }" class="space-y-8">
@@ -36,11 +45,11 @@
                     {{-- Kode --}}
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Kode Pengeluaran</label>
-                        <select name="transaction_code_id" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-red-500">
-                            @foreach($codes as $code)
-                                <option value="{{ $code->id }}"># {{ $code->code }} - {{ $code->label }}</option>
-                            @endforeach
-                        </select>
+                        @php $defaultCode = $codes->first(); @endphp
+                        <div class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700">
+                            # {{ $defaultCode->code ?? 'OUT-LAINYA' }} - {{ $defaultCode->label ?? 'Lainnya' }}
+                        </div>
+                        <input type="hidden" name="transaction_code_id" value="{{ $defaultCode->id ?? '' }}">
                     </div>
 
                     {{-- Keterangan --}}
@@ -122,7 +131,7 @@
                         <td class="px-6 py-4 text-slate-400 font-mono">{{ $loop->iteration }}</td>
                         <td class="px-6 py-4 font-bold">{{ \Carbon\Carbon::parse($exp->tanggal)->format('d/m/Y') }}</td>
                         <td class="px-6 py-4 text-center">
-                            <span class="px-2 py-1 rounded text-[10px] font-bold text-white bg-{{ $exp->transactionCode->color ?? 'slate' }}-500">
+                            <span class="px-2 py-1 rounded text-[10px] font-bold text-red-500 bg-{{ $exp->transactionCode->color ?? 'slate' }}-500">
                                 {{ $exp->transactionCode->code ?? '-' }}
                             </span>
                         </td>
@@ -167,6 +176,14 @@
                             <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Kategori</label>
                             <input type="text" name="label" placeholder="Ex: Biaya Sampah" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-red-500 focus:outline-none" required>
                         </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Kategori</label>
+                        <select name="kategori" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500" required>
+                            <option value="pemasukan">Pemasukan</option>
+                            <option value="pengeluaran" selected>Pengeluaran</option>
+                        </select>
                     </div>
 
                     {{-- Pilihan Warna --}}

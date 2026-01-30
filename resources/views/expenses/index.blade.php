@@ -46,10 +46,13 @@
                     <div>
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Kode Pengeluaran</label>
                         @php $defaultCode = $codes->first(); @endphp
-                        <div class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700">
-                            # {{ $defaultCode->code ?? 'OUT-LAINYA' }} - {{ $defaultCode->label ?? 'Lainnya' }}
-                        </div>
-                        <input type="hidden" name="transaction_code_id" value="{{ $defaultCode->id ?? '' }}">
+                        <select name="transaction_code_id" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700">
+                            @foreach($codes as $code)
+                                <option value="{{ $code->id }}" {{ (old('transaction_code_id', $defaultCode->id ?? '') == $code->id) ? 'selected' : '' }}>
+                                    # {{ $code->code }} - {{ $code->label }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
 
                     {{-- Keterangan --}}
@@ -196,6 +199,17 @@
                                     <div class="w-6 h-6 rounded-full bg-{{ $color == 'primary' ? 'orange' : ($color == 'danger' ? 'red' : ($color == 'success' ? 'green' : ($color == 'warning' ? 'yellow' : $color))) }}-500 border-2 border-transparent peer-checked:border-slate-800 peer-checked:scale-110 transition-all shadow-sm"></div>
                                 </label>
                             @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Insidentil --}}
+                    <div class="mb-4">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Insidentil</label>
+                        <div class="flex items-center">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="insidentil" value="1" class="form-checkbox h-4 w-4 text-indigo-600">
+                                <span class="ml-2 text-xs font-medium text-slate-600">Tandai jika kode ini untuk transaksi insidentil</span>
+                            </label>
                         </div>
                     </div>
 

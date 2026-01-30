@@ -12,9 +12,10 @@ class ExpenseController extends Controller
     public function index(Request $request)
     {
         $searchQuery = $request->query('q');
-        // 1. Ambil Total Pengeluaran Bulan Ini untuk kode OUT-LAINYA saja
+        // 1. Ambil Total Pengeluaran Bulan Ini untuk kode yang bersifat insidentil dan kategori pengeluaran
         $totalExpense = Cashflow::whereHas('transactionCode', function ($q) {
-            $q->where('code', 'OUT-LAINYA');
+            $q->where('kategori', 'pengeluaran')
+                ->where('insidentil', true);
         })
             ->whereYear('tanggal', Carbon::now()->year)
             ->whereMonth('tanggal', Carbon::now()->month)
@@ -37,8 +38,11 @@ class ExpenseController extends Controller
             ->limit(50)
             ->get();
 
-        // 3. Ambil Daftar Kode Transaksi untuk Dropdown & Modal (hanya OUT-LAINYA untuk form)
-        $codes = TransactionCode::where('code', 'OUT-LAINYA')->orderBy('code', 'asc')->get();
+        // 3. Ambil Daftar Kode Transaksi untuk Dropdown & Modal (hanya kode insidentil & kategori pengeluaran)
+        $codes = TransactionCode::where('kategori', 'pengeluaran')
+            ->where('insidentil', true)
+            ->orderBy('code', 'asc')
+            ->get();
 
         return view('expenses.index', compact('totalExpense', 'expenses', 'codes'));
     }
@@ -75,6 +79,7 @@ class ExpenseController extends Controller
             'label' => 'required|string|max:50',
             'color' => 'required|string', // danger, success, primary, etc
             'kategori' => 'required|in:pemasukan,pengeluaran',
+            'insidentil' => 'sometimes|boolean',
         ]);
 
         TransactionCode::create([
@@ -82,6 +87,7 @@ class ExpenseController extends Controller
             'label' => strtoupper($request->label),
             'color' => $request->color,
             'kategori' => $request->kategori,
+            'insidentil' => (int) $request->boolean('insidentil', false),
         ]);
 
         return redirect()->back()->with('success', 'Kategori transaksi berhasil ditambahkan!');

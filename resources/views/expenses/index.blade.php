@@ -19,6 +19,18 @@
 
 <div x-data="{ showCodeModal: false }" class="space-y-8">
 
+    @php
+        $colorMap = [
+            'danger' => 'red',
+            'success' => 'green',
+            'primary' => 'orange',
+            'warning' => 'yellow',
+            'indigo' => 'indigo',
+            'teal' => 'teal',
+            'slate' => 'slate',
+        ];
+    @endphp
+
     {{-- GRID UTAMA: FORM (KIRI) & SUMMARY (KANAN) --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
@@ -92,9 +104,38 @@
             <i class="fas fa-chart-area absolute -bottom-4 -right-4 text-9xl text-white opacity-10"></i>
             
             <div>
-                <h4 class="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Total Seluruh Pengeluaran</h4>
-                <p class="text-[10px] opacity-60">(Bulan Ini)</p>
-                <h2 class="text-5xl font-extrabold mt-4">Rp {{ number_format($totalExpense, 0, ',', '.') }}</h2>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Total Seluruh Pengeluaran</h4>
+                        <p class="text-[10px] opacity-60">(Bulan: {{ \Carbon\Carbon::createFromDate($selectedYear, $selectedMonth, 1)->format('F Y') }})</p>
+                        <h2 class="text-5xl font-extrabold mt-4">Rp {{ number_format($totalExpense, 0, ',', '.') }}</h2>
+                    </div>
+
+                    {{-- Total all-time kecil di samping --}}
+                    <div class="text-right">
+                        <p class="text-[10px] opacity-70">Total (Semua Waktu)</p>
+                        <p class="text-sm font-extrabold mt-2">Rp {{ number_format($totalExpenseAll ?? 0, 0, ',', '.') }}</p>
+                    </div>
+                </div>
+
+                {{-- Month/Year selector (keeps default as current month) --}}
+                <form method="GET" action="{{ route('expenses.index') }}" class="mt-4 flex items-center gap-2">
+                    <input type="hidden" name="q" value="{{ request('q') }}">
+                    <select name="month" class="text-sm text-black bg-white/10 rounded px-2 py-1">
+                        @foreach(range(1,12) as $m)
+                            <option value="{{ $m }}" {{ $selectedMonth == $m ? 'selected' : '' }}>{{ \Carbon\Carbon::createFromDate($selectedYear, $m, 1)->format('M') }}</option>
+                        @endforeach
+                    </select>
+
+                    <select name="year" class="text-sm text-black bg-white/10 rounded px-2 py-1">
+                        @php $currentYear = now()->year; @endphp
+                        @foreach(range($currentYear-2, $currentYear+1) as $y)
+                            <option value="{{ $y }}" {{ $selectedYear == $y ? 'selected' : '' }}>{{ $y }}</option>
+                        @endforeach
+                    </select>
+
+                    <button type="submit" class="px-3 py-1 bg-white/20 rounded text-xs font-bold">Lihat</button>
+                </form>
             </div>
 
             <div class="mt-8 space-y-2">
@@ -134,7 +175,8 @@
                         <td class="px-6 py-4 text-slate-400 font-mono">{{ $loop->iteration }}</td>
                         <td class="px-6 py-4 font-bold">{{ \Carbon\Carbon::parse($exp->tanggal)->format('d/m/Y') }}</td>
                         <td class="px-6 py-4 text-center">
-                            <span class="px-2 py-1 rounded text-[10px] font-bold text-red-500 bg-{{ $exp->transactionCode->color ?? 'slate' }}-500">
+                            @php $expColor = $colorMap[$exp->transactionCode->color ?? 'slate'] ?? ($exp->transactionCode->color ?? 'slate'); @endphp
+                            <span class="px-2 py-1 rounded text-[10px] font-bold text-white bg-{{ $expColor }}-500">
                                 {{ $exp->transactionCode->code ?? '-' }}
                             </span>
                         </td>
@@ -196,7 +238,8 @@
                             @foreach(['danger', 'success', 'primary', 'warning', 'indigo', 'teal', 'slate'] as $color)
                                 <label class="cursor-pointer">
                                     <input type="radio" name="color" value="{{ $color }}" class="peer sr-only" {{ $loop->first ? 'checked' : '' }}>
-                                    <div class="w-6 h-6 rounded-full bg-{{ $color == 'primary' ? 'orange' : ($color == 'danger' ? 'red' : ($color == 'success' ? 'green' : ($color == 'warning' ? 'yellow' : $color))) }}-500 border-2 border-transparent peer-checked:border-slate-800 peer-checked:scale-110 transition-all shadow-sm"></div>
+                                            @php $swatch = $colorMap[$color] ?? $color; @endphp
+                                            <div class="w-6 h-6 rounded-full bg-{{ $swatch }}-500 border-2 border-transparent peer-checked:border-slate-800 peer-checked:scale-110 transition-all shadow-sm"></div>
                                 </label>
                             @endforeach
                         </div>
@@ -227,7 +270,8 @@
                     <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg shadow-sm group">
                         <div class="flex items-center gap-3">
                             <span class="font-mono font-bold text-slate-800 text-sm">{{ $code->code }}</span>
-                            <span class="text-xs font-bold text-{{ $code->color == 'primary' ? 'orange' : ($code->color == 'danger' ? 'red' : ($code->color == 'success' ? 'green' : ($code->color == 'warning' ? 'yellow' : $code->color))) }}-600 uppercase">{{ $code->label }}</span>
+                            @php $labelColor = $colorMap[$code->color ?? 'slate'] ?? ($code->color ?? 'slate'); @endphp
+                            <span class="text-xs font-bold text-{{ $labelColor }}-600 uppercase">{{ $code->label }}</span>
                         </div>
                         
                         {{-- Tombol Hapus (Hanya muncul jika bukan kode sistem) --}}

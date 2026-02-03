@@ -12,20 +12,27 @@ class ExpenseController extends Controller
     public function index(Request $request)
     {
         $searchQuery = $request->query('q');
-        // 1. Ambil Total Pengeluaran Bulan Ini untuk kode yang bersifat insidentil dan kategori pengeluaran
+
+        // month/year selection (default: current month/year)
+        $selectedYear = (int) $request->query('year', Carbon::now()->year);
+        $selectedMonth = (int) $request->query('month', Carbon::now()->month);
+
+        // 1. Ambil Total Pengeluaran untuk kode yang bersifat insidentil dan kategori pengeluaran
+        //    berdasarkan bulan/tahun yang dipilih (default: bulan ini)
         $totalExpense = Cashflow::whereHas('transactionCode', function ($q) {
             $q->where('kategori', 'pengeluaran')
                 ->where('insidentil', true);
         })
-            ->whereYear('tanggal', Carbon::now()->year)
-            ->whereMonth('tanggal', Carbon::now()->month)
+            ->whereYear('tanggal', $selectedYear)
+            ->whereMonth('tanggal', $selectedMonth)
             ->sum('kredit');
 
-        // 2. Ambil Riwayat Pengeluaran (Limit 50 terakhir) - hanya kode OUT-LAINYA
+        // 2. Ambil Riwayat Pengeluaran (Limit 50 terakhir) - semua kode insidentil kategori pengeluaran
         $expensesQuery = Cashflow::with('transactionCode')
             ->where('kredit', '>', 0) // Hanya pengeluaran
             ->whereHas('transactionCode', function ($q) {
-                $q->where('code', 'OUT-LAINYA');
+                $q->where('kategori', 'pengeluaran')
+                    ->where('insidentil', true);
             });
 
         if (!empty($searchQuery)) {
@@ -44,7 +51,13 @@ class ExpenseController extends Controller
             ->orderBy('code', 'asc')
             ->get();
 
-        return view('expenses.index', compact('totalExpense', 'expenses', 'codes'));
+        // 4. Total seluruh pengeluaran (tanpa filter waktu) untuk kode insidentil & kategori pengeluaran
+        $totalExpenseAll = Cashflow::whereHas('transactionCode', function ($q) {
+            $q->where('kategori', 'pengeluaran')
+                ->where('insidentil', true);
+        })->sum('kredit');
+
+        return view('expenses.index', compact('totalExpense', 'expenses', 'codes', 'totalExpenseAll', 'selectedMonth', 'selectedYear'));
     }
 
     // Simpan Pengeluaran ke Cashflow

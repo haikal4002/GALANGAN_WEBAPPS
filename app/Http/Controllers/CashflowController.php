@@ -23,18 +23,23 @@ class CashflowController extends Controller
 
         // 2. Hitung Profit Bulan Ini (Hanya dari penjualan & pengeluaran, abaikan modal)
         $currentMonth = Carbon::now();
-        $profitBulanIni = Cashflow::whereYear('tanggal', $currentMonth->year)
-            ->whereMonth('tanggal', $currentMonth->month)
+
+        // selected month/year for profit filter (default: current)
+        $selectedYear = (int) $request->query('year', $currentMonth->year);
+        $selectedMonth = (int) $request->query('month', $currentMonth->month);
+
+        $profitBulanIni = Cashflow::whereYear('tanggal', $selectedYear)
+            ->whereMonth('tanggal', $selectedMonth)
             ->whereHas('transactionCode', function ($q) {
                 $q->where('code', '!=', 'IN-MODAL'); // Kecualikan Modal Awal
             })
             ->sum(DB::raw('debit - kredit'));
 
         // 3. Ambil Data Mutasi (Tabel Utama)
-        // Kita ambil 100 transaksi terakhir, kecualikan kode khusus 'OUT-LAINYA'
+        // Kita ambil 100 transaksi terakhir, hanya tampilkan kode NON-INSIDENTIL
         $cashflowsQuery = Cashflow::with('transactionCode')
             ->whereHas('transactionCode', function ($q) {
-                $q->where('code', '!=', 'OUT-LAINYA');
+                $q->where('insidentil', '!=', 1);
             });
 
         if (!empty($searchQuery)) {
@@ -78,7 +83,7 @@ class CashflowController extends Controller
 
         // 5. Daftar Kode Transaksi untuk Dropdown (sembunyikan kode khusus 'OUT-LAINYA')
         $codes = TransactionCode::orderBy('code', 'asc')
-            ->where('code', '!=', 'OUT-LAINYA')
+            ->where('insidentil', '!=', '1')
             ->get();
 
         return view('cashflow.index', compact(
@@ -86,7 +91,9 @@ class CashflowController extends Controller
             'profitBulanIni',
             'cashflows',
             'codes',
-            'monthlyStats'
+            'monthlyStats',
+            'selectedMonth',
+            'selectedYear'
         ));
     }
 

@@ -18,6 +18,18 @@
 
 <div x-data="{ showCodeModal: false }">
 
+    @php
+        $colorMap = [
+            'danger' => 'red',
+            'success' => 'green',
+            'primary' => 'orange',
+            'warning' => 'yellow',
+            'indigo' => 'indigo',
+            'teal' => 'teal',
+            'slate' => 'slate',
+        ];
+    @endphp
+
 {{-- TOP METRICS --}}
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
     {{-- Card Saldo --}}
@@ -38,7 +50,28 @@
         </div>
         <div>
             <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Profit (Bulan Ini)</p>
-            <h3 class="text-3xl font-extrabold text-slate-800">Rp {{ number_format($profitBulanIni, 0, ',', '.') }}</h3>
+            <div class="flex items-center gap-3">
+                <h3 class="text-3xl font-extrabold text-slate-800">Rp {{ number_format($profitBulanIni, 0, ',', '.') }}</h3>
+
+                {{-- Month selector for profit (default current) --}}
+                <form method="GET" action="{{ route('cashflow.index') }}" class="flex items-center gap-2">
+                    <input type="hidden" name="q" value="{{ request('q') }}">
+                    <select name="month" class="text-sm border rounded px-2 py-1 bg-white" aria-label="Pilih bulan">
+                        @foreach(range(1,12) as $m)
+                            <option value="{{ $m }}" {{ ($selectedMonth ?? now()->month) == $m ? 'selected' : '' }}>{{ \Carbon\Carbon::createFromDate($selectedYear ?? now()->year, $m, 1)->format('M') }}</option>
+                        @endforeach
+                    </select>
+
+                    <select name="year" class="text-sm border rounded px-2 py-1 bg-white" aria-label="Pilih tahun">
+                        @php $currentYear = now()->year; @endphp
+                        @foreach(range($currentYear-2, $currentYear+1) as $y)
+                            <option value="{{ $y }}" {{ ($selectedYear ?? $currentYear) == $y ? 'selected' : '' }}>{{ $y }}</option>
+                        @endforeach
+                    </select>
+
+                    <button type="submit" class="text-xs px-2 py-1 bg-slate-100 rounded">OK</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -137,7 +170,8 @@
                             <td class="px-6 py-4 text-slate-400 font-mono">{{ $loop->iteration }}</td>
                             <td class="px-6 py-4 font-bold">{{ \Carbon\Carbon::parse($cf->tanggal)->format('Y-m-d') }}</td>
                             <td class="px-6 py-4 text-center">
-                                <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200 font-bold text-[10px]">
+                                @php $badgeColor = $colorMap[$cf->transactionCode->color ?? 'slate'] ?? ($cf->transactionCode->color ?? 'slate'); @endphp
+                                <span class="px-2 py-1 rounded font-bold text-[10px] bg-{{ $badgeColor }}-100 text-{{ $badgeColor }}-700 border border-{{ $badgeColor }}-200">
                                     {{ $cf->transactionCode->code ?? '-' }}
                                 </span>
                             </td>
@@ -267,7 +301,8 @@
                         @foreach(['primary', 'danger', 'success', 'warning', 'indigo', 'teal', 'slate'] as $color)
                             <label class="cursor-pointer">
                                 <input type="radio" name="color" value="{{ $color }}" class="peer sr-only" {{ $loop->first ? 'checked' : '' }}>
-                                <div class="w-6 h-6 rounded-full bg-{{ $color == 'primary' ? 'orange' : ($color == 'danger' ? 'red' : ($color == 'success' ? 'green' : ($color == 'warning' ? 'yellow' : $color))) }}-500 border-2 border-transparent peer-checked:border-slate-800 peer-checked:scale-110 transition-all shadow-sm"></div>
+                                @php $swatch = $colorMap[$color] ?? $color; @endphp
+                                <div class="w-6 h-6 rounded-full bg-{{ $swatch }}-500 border-2 border-transparent peer-checked:border-slate-800 peer-checked:scale-110 transition-all shadow-sm"></div>
                             </label>
                         @endforeach
                     </div>

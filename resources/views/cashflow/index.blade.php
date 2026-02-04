@@ -16,7 +16,19 @@
 @endsection
 @section('content')
 
-<div x-data="{ showCodeModal: false }">
+<div x-data="{
+        showCodeModal: false,
+        showEditModal: false,
+        edit: { id: null, tanggal: '', transaction_code_id: '', keterangan: '', amount: 0 },
+        openEdit(row) {
+            this.edit.id = row.id;
+            this.edit.tanggal = row.tanggal;
+            this.edit.transaction_code_id = row.transaction_code_id;
+            this.edit.keterangan = row.keterangan;
+            this.edit.amount = (row.debit && row.debit > 0) ? row.debit : row.kredit;
+            this.showEditModal = true;
+        }
+    }">
 
     @php
         $colorMap = [
@@ -76,10 +88,10 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="space-y-8">
     
-    {{-- KOLOM KIRI (UTAMA) --}}
-    <div class="lg:col-span-2 space-y-8">
+    {{-- BAGIAN UTAMA --}}
+    <div class="space-y-8">
         
         {{-- 1. FORM MUTASI KAS HARIAN --}}
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
@@ -156,12 +168,26 @@
                     <thead>
                         <tr class="bg-slate-50 text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-200">
                             <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">No</th>
-                            <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">Tanggal</th>
+                            <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">
+                                <div class="flex items-center gap-2">
+                                    <span>Tanggal</span>
+                                    <form method="GET" action="{{ route('cashflow.index') }}" class="inline-flex items-center">
+                                        <input type="hidden" name="q" value="{{ request('q') }}">
+                                        <input type="hidden" name="month" value="{{ request('month') }}">
+                                        <input type="hidden" name="year" value="{{ request('year') }}">
+                                        <select name="order" onchange="this.form.submit()" class="text-xs border rounded px-2 py-1 bg-white">
+                                            <option value="desc" {{ request('order', 'desc') == 'desc' ? 'selected' : '' }}>Terbaru</option>
+                                            <option value="asc" {{ request('order') == 'asc' ? 'selected' : '' }}>Terlama</option>
+                                        </select>
+                                    </form>
+                                </div>
+                            </th>
                             <th class="px-6 py-4 text-center sticky top-0 bg-slate-50 z-10">Kode</th>
                             <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">Keterangan</th>
                             <th class="px-6 py-4 text-right text-green-600 sticky top-0 bg-slate-50 z-10">Debit (Masuk)</th>
                             <th class="px-6 py-4 text-right text-red-500 sticky top-0 bg-slate-50 z-10">Kredit (Keluar)</th>
                             <th class="px-6 py-4 text-right font-extrabold text-slate-700 sticky top-0 bg-slate-50 z-10">Saldo</th>
+                            <th class="px-6 py-4 text-center sticky top-0 bg-slate-50 z-10">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="text-xs text-slate-600 divide-y divide-slate-100">
@@ -199,10 +225,23 @@
                             <td class="px-6 py-4 text-right font-extrabold text-slate-800">
                                 Rp {{ number_format($cf->saldo_berjalan, 0, ',', '.') }}
                             </td>
+                            <td class="px-6 py-4 text-center">
+                                <button @click="openEdit({
+                                        id: {{ $cf->id }},
+                                        tanggal: '{{ $cf->tanggal }}',
+                                        transaction_code_id: '{{ $cf->transaction_code_id }}',
+                                        keterangan: '{{ addslashes($cf->keterangan) }}',
+                                        debit: {{ $cf->debit ?? 0 }},
+                                        kredit: {{ $cf->kredit ?? 0 }}
+                                    })"
+                                    class="inline-flex items-center gap-2 px-3 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 font-bold border border-slate-200">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-10 text-center text-slate-400">Belum ada data mutasi kas.</td>
+                            <td colspan="8" class="px-6 py-10 text-center text-slate-400">Belum ada data mutasi kas.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -210,11 +249,8 @@
             </div>
         </div>
 
-    </div>
-
-    {{-- KOLOM KANAN (WIDGET RINGKASAN) --}}
-    <div class="lg:col-span-1">
-        <div class="bg-[#0B1120] rounded-2xl shadow-xl overflow-hidden text-white sticky top-24">
+        {{-- RINGKASAN PERFORMA --}}
+        <div class="bg-[#0B1120] rounded-2xl shadow-xl overflow-hidden text-white">
             <div class="p-5 border-b border-slate-700 bg-slate-800/50">
                 <h4 class="text-sm font-bold uppercase tracking-wider">Ringkasan Performa</h4>
                 <p class="text-[10px] text-slate-400 mt-1">Cashflow 12 Bulan Terakhir</p>
@@ -251,6 +287,7 @@
                 <p class="text-[10px] text-slate-500">Data berdasarkan cash in/out aktual.</p>
             </div>
         </div>
+
     </div>
 
 </div>
@@ -345,6 +382,48 @@
             <p class="text-[9px] text-slate-400">Pastikan kode diawali <b>IN-</b> atau <b>OUT-</b> untuk sistem deteksi otomatis.</p>
         </div>
 
+    </div>
+</div>
+
+{{-- EDIT MODAL (Cashflow) --}}
+<div x-show="showEditModal" x-cloak style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div @click.away="showEditModal = false" class="bg-white rounded-lg w-full max-w-xl p-6">
+        <h3 class="font-bold mb-4">Edit Mutasi</h3>
+        <form :action="`/cash-flow/${edit.id}`" method="POST">
+            @csrf
+            @method('PUT')
+
+            <div class="grid grid-cols-1 gap-3">
+                <div>
+                    <label class="block text-xs text-slate-400">Tanggal</label>
+                    <input type="date" name="tanggal" x-model="edit.tanggal" class="w-full border rounded px-3 py-2">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400">Kode Transaksi</label>
+                    <select name="transaction_code_id" x-model="edit.transaction_code_id" class="w-full border rounded px-3 py-2">
+                        @foreach($codes as $code)
+                            <option value="{{ $code->id }}">{{ $code->code }} - {{ $code->label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400">Keterangan</label>
+                    <input type="text" name="keterangan" x-model="edit.keterangan" class="w-full border rounded px-3 py-2">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400">Jumlah (Rp)</label>
+                    <input type="number" name="amount" x-model="edit.amount" class="w-full border rounded px-3 py-2">
+                </div>
+
+                <div class="flex gap-2 mt-2">
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded">Simpan</button>
+                    <button type="button" @click="showEditModal = false" class="px-4 py-2 bg-slate-100 rounded">Batal</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 

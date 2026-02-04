@@ -40,8 +40,8 @@ class ExpenseController extends Controller
         }
 
         $expenses = $expensesQuery
-            ->orderBy('tanggal', 'desc')
-            ->orderBy('id', 'desc')
+            ->orderBy('tanggal', $order = (strtolower($request->query('order', 'desc')) === 'asc' ? 'asc' : 'desc'))
+            ->orderBy('id', $order)
             ->limit(50)
             ->get();
 
@@ -118,5 +118,36 @@ class ExpenseController extends Controller
 
         TransactionCode::destroy($id);
         return redirect()->back()->with('success', 'Kode transaksi dihapus!');
+    }
+
+    // Edit form for an expense entry (cashflow row)
+    public function edit($id)
+    {
+        $exp = Cashflow::with('transactionCode')->findOrFail($id);
+        $codes = TransactionCode::where('kategori', 'pengeluaran')->orderBy('code', 'asc')->get();
+        return view('expenses.edit', compact('exp', 'codes'));
+    }
+
+    // Update expense
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'tanggal' => 'required|date',
+            'transaction_code_id' => 'required|exists:transaction_codes,id',
+            'keterangan' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+        ]);
+
+        $exp = Cashflow::findOrFail($id);
+
+        $exp->update([
+            'tanggal' => $request->tanggal,
+            'transaction_code_id' => $request->transaction_code_id,
+            'keterangan' => strtoupper($request->keterangan),
+            'debit' => 0,
+            'kredit' => $request->amount,
+        ]);
+
+        return redirect()->route('expenses.index')->with('success', 'Pengeluaran berhasil diperbarui!');
     }
 }

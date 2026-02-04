@@ -17,7 +17,19 @@
 
 @section('content')
 
-<div x-data="{ showCodeModal: false }" class="space-y-8">
+<div x-data="{
+        showCodeModal: false,
+        showEditModal: false,
+        edit: { id: null, tanggal: '', transaction_code_id: '', keterangan: '', amount: 0 },
+        openEdit(row) {
+            this.edit.id = row.id;
+            this.edit.tanggal = row.tanggal;
+            this.edit.transaction_code_id = row.transaction_code_id;
+            this.edit.keterangan = row.keterangan;
+            this.edit.amount = row.kredit;
+            this.showEditModal = true;
+        }
+    }" class="space-y-8">
 
     @php
         $colorMap = [
@@ -44,7 +56,6 @@
                     # Kelola Kode
                 </button>
             </div>
-
             <form action="{{ route('expenses.store') }}" method="POST">
                 @csrf
                 <div class="space-y-4">
@@ -163,7 +174,20 @@
                 <thead>
                     <tr class="bg-slate-50 text-[10px] text-slate-400 uppercase font-bold tracking-wider border-b border-slate-200">
                         <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">No</th>
-                        <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">Tanggal</th>
+                        <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">
+                            <div class="flex items-center gap-2">
+                                <span>Tanggal</span>
+                                <form method="GET" action="{{ route('expenses.index') }}" class="inline-flex items-center">
+                                    <input type="hidden" name="q" value="{{ request('q') }}">
+                                    <input type="hidden" name="month" value="{{ request('month') }}">
+                                    <input type="hidden" name="year" value="{{ request('year') }}">
+                                    <select name="order" onchange="this.form.submit()" class="text-xs border rounded px-2 py-1 bg-white">
+                                        <option value="desc" {{ request('order', 'desc') == 'desc' ? 'selected' : '' }}>Terbaru</option>
+                                        <option value="asc" {{ request('order') == 'asc' ? 'selected' : '' }}>Terlama</option>
+                                    </select>
+                                </form>
+                            </div>
+                        </th>
                         <th class="px-6 py-4 text-center sticky top-0 bg-slate-50 z-10">Kode</th>
                         <th class="px-6 py-4 sticky top-0 bg-slate-50 z-10">Keterangan</th>
                         <th class="px-6 py-4 text-right text-red-500 sticky top-0 bg-slate-50 z-10">Nominal</th>
@@ -182,10 +206,22 @@
                         </td>
                         <td class="px-6 py-4 font-medium uppercase">{{ $exp->keterangan }}</td>
                         <td class="px-6 py-4 text-right font-bold text-red-500">Rp {{ number_format($exp->kredit, 0, ',', '.') }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <button @click="openEdit({
+                                    id: {{ $exp->id }},
+                                    tanggal: '{{ $exp->tanggal }}',
+                                    transaction_code_id: '{{ $exp->transaction_code_id }}',
+                                    keterangan: '{{ addslashes($exp->keterangan) }}',
+                                    kredit: {{ $exp->kredit ?? 0 }}
+                                })"
+                                class="inline-flex items-center gap-2 px-3 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 font-bold border border-slate-200">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="px-6 py-10 text-center text-slate-300 italic">Belum ada data pengeluaran.</td>
+                        <td colspan="6" class="px-6 py-10 text-center text-slate-300 italic">Belum ada data pengeluaran.</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -296,6 +332,48 @@
                 </p>
             </div>
 
+        </div>
+    </div>
+
+    {{-- EDIT MODAL (Expenses) --}}
+    <div x-show="showEditModal" x-cloak style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div @click.away="showEditModal = false" class="bg-white rounded-lg w-full max-w-xl p-6">
+            <h3 class="font-bold mb-4">Edit Pengeluaran</h3>
+            <form :action="`/expenses/${edit.id}`" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="grid grid-cols-1 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400">Tanggal</label>
+                        <input type="date" name="tanggal" x-model="edit.tanggal" class="w-full border rounded px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-slate-400">Kode Pengeluaran</label>
+                        <select name="transaction_code_id" x-model="edit.transaction_code_id" class="w-full border rounded px-3 py-2">
+                            @foreach($codes as $code)
+                                <option value="{{ $code->id }}">{{ $code->code }} - {{ $code->label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-slate-400">Keterangan</label>
+                        <input type="text" name="keterangan" x-model="edit.keterangan" class="w-full border rounded px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-slate-400">Nominal (Rp)</label>
+                        <input type="number" name="amount" x-model="edit.amount" class="w-full border rounded px-3 py-2">
+                    </div>
+
+                    <div class="flex gap-2 mt-2">
+                        <button type="submit" class="px-4 py-2 bg-[#E11D48] text-white rounded">Simpan</button>
+                        <button type="button" @click="showEditModal = false" class="px-4 py-2 bg-slate-100 rounded">Batal</button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 

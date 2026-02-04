@@ -54,9 +54,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/cash-flow', [CashflowController::class, 'index'])->name('cashflow.index');
     Route::post('/cash-flow', [CashflowController::class, 'store'])->name('cashflow.store');
+    Route::put('/cash-flow/{id}', [CashflowController::class, 'update'])->name('cashflow.update');
 
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
     Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    Route::put('/expenses/{id}', [ExpenseController::class, 'update'])->name('expenses.update');
 
     // Route Kelola Kode
     Route::post('/transaction-codes', [ExpenseController::class, 'storeCode'])->name('codes.store');

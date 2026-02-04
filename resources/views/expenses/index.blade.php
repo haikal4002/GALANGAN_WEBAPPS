@@ -207,16 +207,26 @@
                         <td class="px-6 py-4 font-medium uppercase">{{ $exp->keterangan }}</td>
                         <td class="px-6 py-4 text-right font-bold text-red-500">Rp {{ number_format($exp->kredit, 0, ',', '.') }}</td>
                         <td class="px-6 py-4 text-center">
-                            <button @click="openEdit({
-                                    id: {{ $exp->id }},
-                                    tanggal: '{{ $exp->tanggal }}',
-                                    transaction_code_id: '{{ $exp->transaction_code_id }}',
-                                    keterangan: '{{ addslashes($exp->keterangan) }}',
-                                    kredit: {{ $exp->kredit ?? 0 }}
-                                })"
-                                class="inline-flex items-center gap-2 px-3 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 font-bold border border-slate-200">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
+                            <div class="inline-flex items-center gap-2">
+                                <button @click="openEdit({
+                                        id: {{ $exp->id }},
+                                        tanggal: '{{ $exp->tanggal }}',
+                                        transaction_code_id: '{{ $exp->transaction_code_id }}',
+                                        keterangan: '{{ addslashes($exp->keterangan) }}',
+                                        kredit: {{ $exp->kredit ?? 0 }}
+                                    })"
+                                    class="inline-flex items-center gap-2 px-3 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 font-bold border border-slate-200">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+
+                                <form method="POST" action="{{ route('expenses.destroy', $exp->id) }}" onsubmit="return confirm('Hapus pengeluaran ini?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="inline-flex items-center gap-2 px-3 py-1 text-[11px] bg-red-50 hover:bg-red-100 rounded-lg text-red-600 font-bold border border-red-100">
+                                        <i class="fas fa-trash"></i> Hapus
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty

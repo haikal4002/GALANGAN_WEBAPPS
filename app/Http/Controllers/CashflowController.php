@@ -194,4 +194,12 @@ class CashflowController extends Controller
 
         return redirect()->route('cashflow.index')->with('success', 'Data mutasi berhasil diperbarui!');
     }
+
+    // Delete a cashflow entry
+    public function destroy($id)
+    {
+        $cf = Cashflow::findOrFail($id);
+        $cf->delete();
+        return redirect()->route('cashflow.index')->with('success', 'Mutasi kas berhasil dihapus.');
+    }
 }

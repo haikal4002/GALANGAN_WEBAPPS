@@ -449,4 +449,93 @@ class StockItemController extends Controller
 
         return redirect()->back()->with('success', 'Konversi berhasil!');
     }
+
+    // Inline update for satuan, stok, and hpp (harga_beli_terakhir)
+    public function inlineUpdate(Request $request, $id)
+    {
+        $unit = ProductUnit::findOrFail($id);
+
+        $field = $request->input('field');
+        $value = $request->input('value');
+
+        $allowed = ['master_unit_id', 'stok', 'harga_beli_terakhir'];
+        if (!in_array($field, $allowed)) {
+            return redirect()->back()->with('error', 'Field tidak valid');
+        }
+
+        if ($field === 'master_unit_id') {
+            $request->validate(['value' => 'required|exists:master_units,id']);
+
+            $newMasterUnitId = $value;
+            // Prevent duplicate ProductUnit for same product + unit
+            $exists = ProductUnit::where('master_product_id', $unit->master_product_id)
+                ->where('master_unit_id', $newMasterUnitId)
+                ->where('id', '!=', $unit->id)
+                ->exists();
+
+            if ($exists) {
+                return redirect()->back()->with('error', 'Satuan tersebut sudah ada untuk produk ini.');
+            }
+
+            $unit->update(['master_unit_id' => $newMasterUnitId]);
+            return redirect()->back()->with('success', 'Satuan berhasil diperbarui!');
+        }
+
+        if ($field === 'stok') {
+            $request->validate(['value' => 'required|integer']);
+            $unit->update(['stok' => (int) $value]);
+            return redirect()->back()->with('success', 'Stok berhasil diperbarui!');
+        }
+
+        if ($field === 'harga_beli_terakhir') {
+            $request->validate(['value' => 'required|numeric|min:0']);
+            $newHpp = (float) $value;
+
+            DB::transaction(function () use ($unit, $newHpp) {
+                // Update this unit
+                $unit->update([
+                    'harga_beli_terakhir' => $newHpp,
+                    'harga_jual' => $newHpp + ($newHpp * ($unit->margin ?? 0) / 100)
+                ]);
+
+                // Sync other product units proportionally using nilai_konversi
+                $baseHpp = $newHpp / max(1, $unit->nilai_konversi);
+                $others = ProductUnit::where('master_product_id', $unit->master_product_id)
+                    ->where('id', '!=', $unit->id)
+                    ->get();
+
+                foreach ($others as $ou) {
+                    $newOuHpp = $baseHpp * $ou->nilai_konversi;
+                    $ou->update([
+                        'harga_beli_terakhir' => $newOuHpp,
+                        'harga_jual' => $newOuHpp + ($newOuHpp * ($ou->margin ?? 0) / 100)
+                    ]);
+                }
+
+            });
+
+            return redirect()->back()->with('success', 'HPP (Harga Beli Terakhir) berhasil diperbarui!');
+        }
+
+        return redirect()->back();
+    }
+
+    // Delete a product unit (variant) from inventory
+    public function destroyUnit($id)
+    {
+        $unit = ProductUnit::findOrFail($id);
+
+        // Prevent deletion if used in purchase details
+        $isUsed = PurchaseDetail::where('product_unit_id', $id)->exists();
+        if ($isUsed) {
+            return redirect()->back()->with('error', 'Satuan tidak bisa dihapus karena sudah tercatat dalam transaksi pembelian.');
+        }
+
+        if ($unit->stok > 0) {
+            return redirect()->back()->with('error', 'Hapus gagal: stok harus 0 terlebih dahulu.');
+        }
+
+        $unit->delete();
+        return redirect()->back()->with('success', 'Data satuan/stok berhasil dihapus!');
+    }
 }

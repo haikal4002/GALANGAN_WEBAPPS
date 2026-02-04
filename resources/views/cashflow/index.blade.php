@@ -226,17 +226,27 @@
                                 Rp {{ number_format($cf->saldo_berjalan, 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 text-center">
-                                <button @click="openEdit({
-                                        id: {{ $cf->id }},
-                                        tanggal: '{{ $cf->tanggal }}',
-                                        transaction_code_id: '{{ $cf->transaction_code_id }}',
-                                        keterangan: '{{ addslashes($cf->keterangan) }}',
-                                        debit: {{ $cf->debit ?? 0 }},
-                                        kredit: {{ $cf->kredit ?? 0 }}
-                                    })"
-                                    class="inline-flex items-center gap-2 px-3 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 font-bold border border-slate-200">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
+                                <div class="inline-flex items-center gap-2">
+                                    <button @click="openEdit({
+                                            id: {{ $cf->id }},
+                                            tanggal: '{{ $cf->tanggal }}',
+                                            transaction_code_id: '{{ $cf->transaction_code_id }}',
+                                            keterangan: '{{ addslashes($cf->keterangan) }}',
+                                            debit: {{ $cf->debit ?? 0 }},
+                                            kredit: {{ $cf->kredit ?? 0 }}
+                                        })"
+                                        class="inline-flex items-center gap-2 px-3 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 font-bold border border-slate-200">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+
+                                    <form method="POST" action="{{ route('cashflow.destroy', $cf->id) }}" onsubmit="return confirm('Hapus mutasi kas ini?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="inline-flex items-center gap-2 px-3 py-1 text-[11px] bg-red-50 hover:bg-red-100 rounded-lg text-red-600 font-bold border border-red-100">
+                                            <i class="fas fa-trash"></i> Hapus
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         @empty

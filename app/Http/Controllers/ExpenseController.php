@@ -150,4 +150,12 @@ class ExpenseController extends Controller
 
         return redirect()->route('expenses.index')->with('success', 'Pengeluaran berhasil diperbarui!');
     }
+
+    // Delete an expense (cashflow) entry
+    public function destroy($id)
+    {
+        $exp = Cashflow::findOrFail($id);
+        $exp->delete();
+        return redirect()->route('expenses.index')->with('success', 'Pengeluaran berhasil dihapus!');
+    }
 }

@@ -219,9 +219,23 @@
                             <td class="px-6 py-4 whitespace-normal break-words max-w-[300px] font-bold text-slate-800">{{ $item->masterProduct->nama ?? '-' }}</td>
                             
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-bold text-slate-600">
-                                    {{ $item->masterUnit->nama ?? '-' }}
-                                </span>
+                                <div x-show="!editing">
+                                    <span class="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-bold text-slate-600">
+                                        {{ $item->masterUnit->nama ?? '-' }}
+                                    </span>
+                                </div>
+                                <div x-show="editing" style="display: none">
+                                    <form method="POST" action="{{ route('stok.inline_update', $item->id) }}">
+                                        @csrf
+                                        <input type="hidden" name="field" value="master_unit_id">
+                                        <select name="value" class="text-sm p-2 border rounded bg-white">
+                                            @foreach($allUnits as $u)
+                                                <option value="{{ $u->id }}" @if($u->id == $item->master_unit_id) selected @endif>{{ $u->nama }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit" class="ml-2 px-2 py-1 bg-indigo-600 text-white rounded text-xs">Simpan</button>
+                                    </form>
+                                </div>
                             </td>
 
                             <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -233,9 +247,27 @@
                             </td>
 
                             <td class="px-6 py-4 whitespace-nowrap text-center font-bold {{ $item->stok == 0 ? 'text-red-500' : 'text-slate-700' }}">
-                                {{ $item->stok }}
+                                <div x-show="!editing">{{ $item->stok }}</div>
+                                <div x-show="editing" style="display: none">
+                                    <form method="POST" action="{{ route('stok.inline_update', $item->id) }}" class="flex items-center justify-center">
+                                        @csrf
+                                        <input type="hidden" name="field" value="stok">
+                                        <input type="number" name="value" min="0" value="{{ $item->stok }}" class="w-20 p-1 border rounded text-sm text-center">
+                                        <button type="submit" class="ml-2 px-2 py-1 bg-indigo-600 text-white rounded text-xs">Simpan</button>
+                                    </form>
+                                </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500">Rp {{ number_format($item->harga_beli_terakhir, 0, ',', '.') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500">
+                                <div x-show="!editing">Rp {{ number_format($item->harga_beli_terakhir, 0, ',', '.') }}</div>
+                                <div x-show="editing" style="display: none">
+                                    <form method="POST" action="{{ route('stok.inline_update', $item->id) }}" class="flex items-center gap-2">
+                                        @csrf
+                                        <input type="hidden" name="field" value="harga_beli_terakhir">
+                                        <input type="number" name="value" min="0" step="0.01" value="{{ $item->harga_beli_terakhir }}" class="w-32 p-1 border rounded text-sm">
+                                        <button type="submit" class="px-2 py-1 bg-indigo-600 text-white rounded text-xs">Simpan</button>
+                                    </form>
+                                </div>
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap font-bold text-blue-600">Rp {{ number_format($item->stok * $item->harga_beli_terakhir, 0, ',', '.') }}</td>
                             
                             <td class="px-6 py-4 whitespace-nowrap text-orange-600 font-bold">
@@ -281,6 +313,15 @@
                                         <i class="fas fa-edit text-xs"></i>
                                     </button>
 
+                                    {{-- Tombol Hapus (selalu terlihat saat tidak dalam mode edit) --}}
+                                    <form x-show="!editing" method="POST" action="{{ route('stok.destroy_unit', $item->id) }}" onsubmit="return confirm('Yakin ingin menghapus varian stok ini?');" class="inline-block">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="w-8 h-8 ml-1 rounded-lg bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Hapus">
+                                            <i class="fas fa-trash text-xs"></i>
+                                        </button>
+                                    </form>
+
                                     <div x-show="editing" style="display: none;" class="flex items-center gap-1">
                                         <form id="form-update-{{ $item->id }}" action="{{ route('stok.update-price', $item->id) }}" method="POST" enctype="multipart/form-data">
                                             @csrf
@@ -296,6 +337,14 @@
                                         <button @click="editing = false; hargaJual = {{ $item->harga_jual }}; hargaAtas = {{ $item->harga_atas }}" class="w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm">
                                             <i class="fas fa-times text-xs"></i>
                                         </button>
+                                        {{-- Tombol Hapus --}}
+                                        <form method="POST" action="{{ route('stok.destroy_unit', $item->id) }}" onsubmit="return confirm('Yakin ingin menghapus varian stok ini?');" class="inline-block">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Hapus">
+                                                <i class="fas fa-trash text-xs"></i>
+                                            </button>
+                                        </form>
                                     </div>
 
                                 @if($item->stok <= 0)

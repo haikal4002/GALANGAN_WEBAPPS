@@ -43,6 +43,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/stok', [StockItemController::class, 'index'])->name('stok.index');
     Route::get('/stok/{id}', [StockItemController::class, 'show'])->name('stok.show');
     Route::put('/stok/{id}/update', [StockItemController::class, 'updateItem'])->name('stok.update-price');
+    // Inline update from inventory table: satuan, stok, hpp
+    Route::post('/stok/{id}/inline-update', [StockItemController::class, 'inlineUpdate'])->name('stok.inline_update');
+    // Delete product unit (from inventory row)
+    Route::delete('/stok/{id}/destroy-unit', [StockItemController::class, 'destroyUnit'])->name('stok.destroy_unit');
     Route::post('/stok/break', [StockItemController::class, 'breakUnit'])->name('stok.break');
     Route::put('/pembelian/{id}/pay', [StockItemController::class, 'markAsPaid'])->name('purchase.pay');
 
@@ -54,10 +58,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/cash-flow', [CashflowController::class, 'index'])->name('cashflow.index');
     Route::post('/cash-flow', [CashflowController::class, 'store'])->name('cashflow.store');
+    Route::delete('/cash-flow/{id}', [CashflowController::class, 'destroy'])->name('cashflow.destroy');
     Route::put('/cash-flow/{id}', [CashflowController::class, 'update'])->name('cashflow.update');
 
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
     Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
     Route::put('/expenses/{id}', [ExpenseController::class, 'update'])->name('expenses.update');
 
     // Route Kelola Kode

@@ -174,15 +174,17 @@
                         <tr x-show="searchQuery === '' || searchQuery.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.nama.includes(word))" 
                             data-nama="{{ strtolower($item->masterProduct->nama ?? '') }}"
                             x-data="{ 
-                                editing: false, 
-                                hargaJual: {{ $item->harga_jual }}, 
-                                hargaAtas: {{ $item->harga_atas }}, 
-                                hargaBeli: {{ $item->harga_beli_terakhir }},
-                                get margin() {
-                                    if (this.hargaBeli <= 0) return 0;
-                                    return (((this.hargaJual - this.hargaBeli) / this.hargaBeli) * 100).toFixed(2);
-                                }
-                            }"
+                                    editing: false, 
+                                    hargaJual: {{ $item->harga_jual }}, 
+                                    hargaAtas: {{ $item->harga_atas }}, 
+                                    hargaBeli: {{ $item->harga_beli_terakhir }},
+                                    stok: {{ $item->stok }},
+                                    masterUnitId: {{ $item->master_unit_id }},
+                                    get margin() {
+                                        if (this.hargaBeli <= 0) return 0;
+                                        return (((this.hargaJual - this.hargaBeli) / this.hargaBeli) * 100).toFixed(2);
+                                    }
+                                }"
                             class="hover:bg-slate-50/80 transition-colors group">
                             <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->iteration }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -225,16 +227,11 @@
                                     </span>
                                 </div>
                                 <div x-show="editing" style="display: none">
-                                    <form method="POST" action="{{ route('stok.inline_update', $item->id) }}">
-                                        @csrf
-                                        <input type="hidden" name="field" value="master_unit_id">
-                                        <select name="value" class="text-sm p-2 border rounded bg-white">
-                                            @foreach($allUnits as $u)
-                                                <option value="{{ $u->id }}" @if($u->id == $item->master_unit_id) selected @endif>{{ $u->nama }}</option>
-                                            @endforeach
-                                        </select>
-                                        <button type="submit" class="ml-2 px-2 py-1 bg-indigo-600 text-white rounded text-xs">Simpan</button>
-                                    </form>
+                                    <select x-model="masterUnitId" class="text-sm p-2 border rounded bg-white">
+                                        @foreach($allUnits as $u)
+                                            <option value="{{ $u->id }}" @if($u->id == $item->master_unit_id) selected @endif>{{ $u->nama }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </td>
 
@@ -249,23 +246,13 @@
                             <td class="px-6 py-4 whitespace-nowrap text-center font-bold {{ $item->stok == 0 ? 'text-red-500' : 'text-slate-700' }}">
                                 <div x-show="!editing">{{ $item->stok }}</div>
                                 <div x-show="editing" style="display: none">
-                                    <form method="POST" action="{{ route('stok.inline_update', $item->id) }}" class="flex items-center justify-center">
-                                        @csrf
-                                        <input type="hidden" name="field" value="stok">
-                                        <input type="number" name="value" min="0" value="{{ $item->stok }}" class="w-20 p-1 border rounded text-sm text-center">
-                                        <button type="submit" class="ml-2 px-2 py-1 bg-indigo-600 text-white rounded text-xs">Simpan</button>
-                                    </form>
+                                    <input type="number" x-model.number="stok" min="0" class="w-20 p-1 border rounded text-sm text-center">
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500">
                                 <div x-show="!editing">Rp {{ number_format($item->harga_beli_terakhir, 0, ',', '.') }}</div>
                                 <div x-show="editing" style="display: none">
-                                    <form method="POST" action="{{ route('stok.inline_update', $item->id) }}" class="flex items-center gap-2">
-                                        @csrf
-                                        <input type="hidden" name="field" value="harga_beli_terakhir">
-                                        <input type="number" name="value" min="0" step="0.01" value="{{ $item->harga_beli_terakhir }}" class="w-32 p-1 border rounded text-sm">
-                                        <button type="submit" class="px-2 py-1 bg-indigo-600 text-white rounded text-xs">Simpan</button>
-                                    </form>
+                                    <input type="number" x-model.number="hargaBeli" min="0" step="0.01" class="w-32 p-1 border rounded text-sm">
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap font-bold text-blue-600">Rp {{ number_format($item->stok * $item->harga_beli_terakhir, 0, ',', '.') }}</td>
@@ -328,13 +315,16 @@
                                             @method('PUT')
                                             <input type="hidden" name="harga_jual" :value="hargaJual">
                                             <input type="hidden" name="harga_atas" :value="hargaAtas">
+                                            <input type="hidden" name="stok" :value="stok">
+                                            <input type="hidden" name="master_unit_id" :value="masterUnitId">
+                                            <input type="hidden" name="harga_beli_terakhir" :value="hargaBeli">
                                             {{-- Tombol submit --}}
                                             <button type="submit" class="w-8 h-8 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-all flex items-center justify-center shadow-sm">
                                                 <i class="fas fa-check text-xs"></i>
                                             </button>
                                         </form>
                                         {{-- Tombol Cancel --}}
-                                        <button @click="editing = false; hargaJual = {{ $item->harga_jual }}; hargaAtas = {{ $item->harga_atas }}" class="w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm">
+                                        <button @click="editing = false; hargaJual = {{ $item->harga_jual }}; hargaAtas = {{ $item->harga_atas }}; stok = {{ $item->stok }}" class="w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shadow-sm">
                                             <i class="fas fa-times text-xs"></i>
                                         </button>
                                         {{-- Tombol Hapus --}}

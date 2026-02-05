@@ -51,9 +51,9 @@
         {{-- sidebar --}}
         <aside :class="sidebarOpen ? 'w-64' : 'w-20'"
             class="sidebar-transition bg-sidebar text-white flex flex-col fixed h-full z-50">
-            <div class="h-20 flex items-center border-b border-slate-700/50 sidebar-transition" :class="sidebarOpen ? 'px-6' : 'justify-center'">
-                <div class="flex-shrink-0 w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-orange-900/50">
-                    <i class="fas fa-cube text-lg"></i>
+                <div class="h-20 flex items-center border-b border-slate-700/50 sidebar-transition" :class="sidebarOpen ? 'px-6' : 'justify-center'">
+                <div class="flex-shrink-0 w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <img src="{{ asset('images/logo.png') }}" alt="Logo" class="w-6 h-6 object-contain">
                 </div>
                 <div x-show="sidebarOpen" x-transition.opacity class="ml-3 overflow-hidden">
                     <h1 class="font-bold text-lg leading-tight whitespace-nowrap">BangunTrack</h1>

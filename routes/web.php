@@ -43,8 +43,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/stok', [StockItemController::class, 'index'])->name('stok.index');
     Route::get('/stok/{id}', [StockItemController::class, 'show'])->name('stok.show');
     Route::put('/stok/{id}/update', [StockItemController::class, 'updateItem'])->name('stok.update-price');
-    // Inline update from inventory table: satuan, stok, hpp
-    Route::post('/stok/{id}/inline-update', [StockItemController::class, 'inlineUpdate'])->name('stok.inline_update');
+    // Inline update from inventory table: satuan, stok, hpp (handled via main update form now)
     // Delete product unit (from inventory row)
     Route::delete('/stok/{id}/destroy-unit', [StockItemController::class, 'destroyUnit'])->name('stok.destroy_unit');
     Route::post('/stok/break', [StockItemController::class, 'breakUnit'])->name('stok.break');

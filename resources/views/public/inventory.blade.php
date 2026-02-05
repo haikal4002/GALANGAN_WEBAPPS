@@ -44,8 +44,9 @@
         <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
-                        <i class="fas fa-cube text-lg"></i>
+                    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-primary shadow-sm border border-slate-100">
+                        {{-- <i class="fas fa-cube text-lg"></i> --}}
+                        <img src="{{ asset('images/logo.png') }}" alt="Logo">
                     </div>
                     <div>
                         <h1 class="text-xl font-bold text-slate-800 tracking-tight">BangunTrack</h1>

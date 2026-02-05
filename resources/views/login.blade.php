@@ -33,8 +33,9 @@
 
     <div class="bg-white p-10 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] w-full max-w-[400px] text-center">
         
-        <div class="w-12 h-12 bg-iconBg text-primary rounded-xl flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm">
-            <i class="fas fa-cube"></i>
+        <div class="w-12 h-12 bg-white text-primary rounded-xl flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm">
+            {{-- <i class="fas fa-cube"></i> --}}
+            <img src="{{ asset('images/logo.png') }}" alt="Logo">
         </div>
 
         <h3 class="text-xl font-bold text-slate-800 mb-1">BangunTrack</h3>

@@ -183,23 +183,73 @@ class StockItemController extends Controller
         $request->validate([
             'harga_jual' => 'required|numeric|min:0',
             'harga_atas' => 'nullable|numeric|min:0',
+            'stok' => 'nullable|integer|min:0',
+            'master_unit_id' => 'nullable|exists:master_units,id',
+            'harga_beli_terakhir' => 'nullable|numeric|min:0',
             'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
         $unit = ProductUnit::findOrFail($id);
 
-        // Recalculate margin
+        // Recalculate margin (based on current HPP)
         $margin = 0;
         if ($unit->harga_beli_terakhir > 0) {
             $margin = (($request->harga_jual - $unit->harga_beli_terakhir) / $unit->harga_beli_terakhir) * 100;
         }
 
         // update harga + margin first
-        $unit->update([
+        $updateData = [
             'harga_jual' => $request->harga_jual,
             'harga_atas' => $request->harga_atas ?? $unit->harga_atas,
             'margin' => round($margin, 2),
-        ]);
+        ];
+
+        // optional stok update if provided
+        if ($request->filled('stok')) {
+            $updateData['stok'] = (int) $request->stok;
+        }
+
+        // optional master_unit change: ensure no duplicate for same product
+        if ($request->filled('master_unit_id')) {
+            $newMasterUnitId = $request->master_unit_id;
+            $exists = ProductUnit::where('master_product_id', $unit->master_product_id)
+                ->where('master_unit_id', $newMasterUnitId)
+                ->where('id', '!=', $unit->id)
+                ->exists();
+
+            if ($exists) {
+                return redirect()->back()->with('error', 'Satuan tersebut sudah ada untuk produk ini.');
+            }
+
+            $updateData['master_unit_id'] = $newMasterUnitId;
+        }
+
+        // If harga_beli_terakhir changed, sync proportional HPP to other units
+        if ($request->filled('harga_beli_terakhir')) {
+            $newHpp = (float) $request->harga_beli_terakhir;
+
+            DB::transaction(function () use ($unit, $newHpp) {
+                // Sync other product units proportionally using nilai_konversi
+                $baseHpp = $newHpp / max(1, $unit->nilai_konversi);
+                $others = ProductUnit::where('master_product_id', $unit->master_product_id)
+                    ->where('id', '!=', $unit->id)
+                    ->get();
+
+                foreach ($others as $ou) {
+                    $newOuHpp = $baseHpp * $ou->nilai_konversi;
+                    $ou->update([
+                        'harga_beli_terakhir' => $newOuHpp,
+                        'harga_jual' => $newOuHpp + ($newOuHpp * ($ou->margin ?? 0) / 100)
+                    ]);
+                }
+            });
+
+            // update this unit's HPP as well
+            $updateData['harga_beli_terakhir'] = $newHpp;
+        }
+
+        // finally update this unit with collected data
+        $unit->update($updateData);
 
         // handle optional gambar upload
         if ($request->hasFile('gambar')) {
@@ -450,75 +500,6 @@ class StockItemController extends Controller
         return redirect()->back()->with('success', 'Konversi berhasil!');
     }
 
-    // Inline update for satuan, stok, and hpp (harga_beli_terakhir)
-    public function inlineUpdate(Request $request, $id)
-    {
-        $unit = ProductUnit::findOrFail($id);
-
-        $field = $request->input('field');
-        $value = $request->input('value');
-
-        $allowed = ['master_unit_id', 'stok', 'harga_beli_terakhir'];
-        if (!in_array($field, $allowed)) {
-            return redirect()->back()->with('error', 'Field tidak valid');
-        }
-
-        if ($field === 'master_unit_id') {
-            $request->validate(['value' => 'required|exists:master_units,id']);
-
-            $newMasterUnitId = $value;
-            // Prevent duplicate ProductUnit for same product + unit
-            $exists = ProductUnit::where('master_product_id', $unit->master_product_id)
-                ->where('master_unit_id', $newMasterUnitId)
-                ->where('id', '!=', $unit->id)
-                ->exists();
-
-            if ($exists) {
-                return redirect()->back()->with('error', 'Satuan tersebut sudah ada untuk produk ini.');
-            }
-
-            $unit->update(['master_unit_id' => $newMasterUnitId]);
-            return redirect()->back()->with('success', 'Satuan berhasil diperbarui!');
-        }
-
-        if ($field === 'stok') {
-            $request->validate(['value' => 'required|integer']);
-            $unit->update(['stok' => (int) $value]);
-            return redirect()->back()->with('success', 'Stok berhasil diperbarui!');
-        }
-
-        if ($field === 'harga_beli_terakhir') {
-            $request->validate(['value' => 'required|numeric|min:0']);
-            $newHpp = (float) $value;
-
-            DB::transaction(function () use ($unit, $newHpp) {
-                // Update this unit
-                $unit->update([
-                    'harga_beli_terakhir' => $newHpp,
-                    'harga_jual' => $newHpp + ($newHpp * ($unit->margin ?? 0) / 100)
-                ]);
-
-                // Sync other product units proportionally using nilai_konversi
-                $baseHpp = $newHpp / max(1, $unit->nilai_konversi);
-                $others = ProductUnit::where('master_product_id', $unit->master_product_id)
-                    ->where('id', '!=', $unit->id)
-                    ->get();
-
-                foreach ($others as $ou) {
-                    $newOuHpp = $baseHpp * $ou->nilai_konversi;
-                    $ou->update([
-                        'harga_beli_terakhir' => $newOuHpp,
-                        'harga_jual' => $newOuHpp + ($newOuHpp * ($ou->margin ?? 0) / 100)
-                    ]);
-                }
-
-            });
-
-            return redirect()->back()->with('success', 'HPP (Harga Beli Terakhir) berhasil diperbarui!');
-        }
-
-        return redirect()->back();
-    }
 
     // Delete a product unit (variant) from inventory
     public function destroyUnit($id)

@@ -27,8 +27,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/master-stock', [StockItemController::class, 'index'])->name('stok.index');
-    Route::post('/master-stock', [StockItemController::class, 'store'])->name('stok.store');
+
     Route::post('/master-product', [StockItemController::class, 'storeMasterProduct'])->name('master-product.store');
     Route::put('/master-product/{id}', [StockItemController::class, 'updateMasterProduct'])->name('master-product.update');
     Route::delete('/master-product/{id}', [StockItemController::class, 'destroyMasterProduct'])->name('master-product.destroy');

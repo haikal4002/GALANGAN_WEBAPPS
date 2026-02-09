@@ -12,35 +12,71 @@ use App\Models\TransactionCode;
 use App\Models\MasterUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class StockItemController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // 1. Get Inventory Data
-        $units = ProductUnit::with(['masterProduct', 'masterUnit']) // Load MasterUnit relation
-            ->orderBy('updated_at', 'desc')
-            ->get();
+        // 1. Get Inventory Data with Eager Loading & Search (Optimized)
+        $search = $request->get('search');
 
-        // 2. Calculate Metrics
-        $totalAset = $units->sum(function ($unit) {
-            return $unit->stok * $unit->harga_beli_terakhir;
+        $query = ProductUnit::with(['masterProduct:id,nama', 'masterUnit:id,nama'])
+            ->select(
+                'id',
+                'master_product_id',
+                'master_unit_id',
+                'nilai_konversi',
+                'is_base_unit',
+                'stok',
+                'harga_beli_terakhir',
+                'margin',
+                'harga_jual',
+                'harga_atas',
+                'gambar',
+                'updated_at'
+            );
+
+        if ($search) {
+            $query->whereHas('masterProduct', function ($q) use ($search) {
+                $q->where('nama', 'like', '%' . $search . '%');
+            });
+        }
+
+        $units = $query->orderBy('updated_at', 'desc')
+            ->paginate(50)
+            ->withQueryString();
+
+        // 2. Calculate Metrics (Optimized with DB aggregates)
+        $totalAset = ProductUnit::selectRaw('SUM(stok * harga_beli_terakhir) as total')
+            ->value('total') ?? 0;
+
+        $totalHutang = Purchase::where('status_pembayaran', 'Belum Lunas')
+            ->sum('total_nominal');
+
+        $barangReady = ProductUnit::where('stok', '>', 0)->count();
+
+        $avgMargin = ProductUnit::where('stok', '>', 0)
+            ->avg('margin') ?? 0;
+
+        // 3. Data for Dropdowns (Only essential columns) - Cached for 10 minutes
+        $masterProducts = Cache::remember('master_products_list', 600, function () {
+            return MasterProduct::select('id', 'nama')
+                ->orderBy('nama', 'asc')
+                ->get();
         });
 
-        $totalHutang = Purchase::where('status_pembayaran', 'Belum Lunas')->sum('total_nominal');
-        $barangReady = $units->where('stok', '>', 0)->count();
-        $avgMargin = $units->avg('margin');
+        $suppliers = Cache::remember('suppliers_list', 600, function () {
+            return Supplier::select('id', 'nama', 'kontak', 'alamat')
+                ->orderBy('nama', 'asc')
+                ->get();
+        });
 
-        // 3. Data for Dropdowns
-        $masterProducts = MasterProduct::orderBy('nama', 'asc')->get();
-        $suppliers = Supplier::orderBy('nama', 'asc')->get();
-        $allUnits = MasterUnit::withCount('productUnits')->orderBy('nama', 'asc')->get(); // For the unit dropdown
-
-        // 4. Get Purchase History
-        $purchases = Purchase::with(['supplier', 'purchaseDetails.productUnit.masterProduct', 'purchaseDetails.productUnit.masterUnit'])
-            ->orderBy('tanggal', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $allUnits = Cache::remember('master_units_list', 600, function () {
+            return MasterUnit::withCount('productUnits')
+                ->orderBy('nama', 'asc')
+                ->get();
+        });
 
         return view('stock.index', compact(
             'units',
@@ -50,131 +86,8 @@ class StockItemController extends Controller
             'barangReady',
             'avgMargin',
             'masterProducts',
-            'suppliers',
-            'purchases'
+            'suppliers'
         ));
-    }
-
-    // Store Master Product (No changes needed)
-    public function storeMasterProduct(Request $request)
-    {
-        $request->validate(['nama' => 'required|string|unique:master_products,nama|max:255']);
-        MasterProduct::create(['nama' => strtoupper($request->nama)]);
-        return redirect()->back()->with('success', 'Master Barang berhasil ditambahkan!');
-    }
-
-    // Update Master Product
-    public function updateMasterProduct(Request $request, $id)
-    {
-        $request->validate(['nama' => 'required|string|unique:master_products,nama,' . $id . '|max:255']);
-        $product = MasterProduct::findOrFail($id);
-        $product->update(['nama' => strtoupper($request->nama)]);
-        return redirect()->back()->with('success', 'Master Barang berhasil diperbarui!');
-    }
-
-    // Store Master Unit
-    public function storeMasterUnit(Request $request)
-    {
-        $request->validate(['nama' => 'required|string|unique:master_units,nama|max:255']);
-        MasterUnit::create(['nama' => strtoupper($request->nama)]);
-        return redirect()->back()->with('success', 'Master Satuan berhasil ditambahkan!');
-    }
-
-    // Update Master Unit
-    public function updateMasterUnit(Request $request, $id)
-    {
-        $request->validate(['nama' => 'required|string|unique:master_units,nama,' . $id . '|max:255']);
-        $unit = MasterUnit::findOrFail($id);
-        $unit->update(['nama' => strtoupper($request->nama)]);
-        return redirect()->back()->with('success', 'Master Satuan berhasil diperbarui!');
-    }
-
-    // Destroy Master Unit
-    public function destroyMasterUnit($id)
-    {
-        $unit = MasterUnit::findOrFail($id);
-
-        // Cek apakah sudah digunakan di product_units
-        $isUsed = ProductUnit::where('master_unit_id', $id)->exists();
-
-        if ($isUsed) {
-            return redirect()->back()->with('error', 'Satuan tidak bisa dihapus karena sudah digunakan dalam data stok!');
-        }
-
-        $unit->delete();
-        return redirect()->back()->with('success', 'Master Satuan berhasil dihapus!');
-    }
-
-    // Melunasi Pembelian (Manual)
-    public function markAsPaid($id)
-    {
-        DB::transaction(function () use ($id) {
-            $purchase = Purchase::with('purchaseDetails.productUnit.masterProduct')->findOrFail($id);
-
-            if ($purchase->status_pembayaran == 'Lunas') {
-                return;
-            }
-
-            // 1. Update Status Purchase
-            $purchase->update([
-                'status_pembayaran' => 'Lunas'
-            ]);
-
-            // 2. Pencatatan Cashflow (Keluar)
-            $codeKeluar = TransactionCode::where('code', 'OUT-PURCHASE')->first();
-
-            // Generate keterangan dari detail barang
-            $items = $purchase->purchaseDetails->map(function ($d) {
-                return ($d->productUnit->masterProduct->nama ?? 'Barang') . " (x" . $d->qty . ")";
-            })->implode(', ');
-
-            Cashflow::create([
-                'tanggal' => now(), // Saat pelunasan dilakukan
-                'transaction_code_id' => $codeKeluar ? $codeKeluar->id : 1,
-                'keterangan' => "Pelunasan: " . $items . " [Nota: " . $purchase->nomor_resi . "]",
-                'debit' => 0,
-                'kredit' => $purchase->total_nominal
-            ]);
-        });
-
-        return redirect()->back()->with('success', 'Transaksi berhasil dilunasi!');
-    }
-
-    // Store Supplier (No changes needed)
-    public function storeSupplier(Request $request)
-    {
-        $request->validate([
-            'nama' => 'required|string|unique:suppliers,nama|max:255',
-            'kontak' => 'nullable|string|max:50',
-            'alamat' => 'nullable|string|max:255',
-        ]);
-
-        Supplier::create([
-            'nama' => strtoupper($request->nama),
-            'kontak' => $request->kontak ?? '-',
-            'alamat' => $request->alamat ?? '-'
-        ]);
-
-        return redirect()->back()->with('success', 'Supplier berhasil ditambahkan!');
-    }
-
-    // Update Supplier
-    public function updateSupplier(Request $request, $id)
-    {
-        $request->validate([
-            'nama' => 'required|string|unique:suppliers,nama,' . $id . '|max:255',
-            'kontak' => 'nullable|string|max:50',
-            'alamat' => 'nullable|string|max:255',
-        ]);
-
-        $supplier = Supplier::findOrFail($id);
-        $supplier->update([
-            'nama' => strtoupper($request->nama),
-            'kontak' => $request->kontak ?? '-',
-            'alamat' => $request->alamat ?? '-'
-        ]);
-
-        return redirect()->back()->with('success', 'Supplier berhasil diperbarui!');
     }
 
     // Update Price & Margin for Stock Item
@@ -210,7 +123,7 @@ class StockItemController extends Controller
         }
 
         // optional master_unit change: ensure no duplicate for same product
-        if ($request->filled('master_unit_id')) {
+        if ($request->filled('master_unit_id') && $request->master_unit_id != $unit->master_unit_id) {
             $newMasterUnitId = $request->master_unit_id;
             $exists = ProductUnit::where('master_product_id', $unit->master_product_id)
                 ->where('master_unit_id', $newMasterUnitId)
@@ -385,10 +298,11 @@ class StockItemController extends Controller
                 }
             }
 
-            // 3. SYNC HARGA KE UNIT LAIN (PROPOSIONAL)
+            // 3. SYNC HARGA KE UNIT LAIN (PROPOSIONAL) - Optimized
             $baseHpp = $request->harga_beli / $unitUtama->nilai_konversi;
             $otherUnits = ProductUnit::where('master_product_id', $request->master_product_id)
-                ->get(); // Sync semuany termasuk yang baru dibuat
+                ->where('id', '!=', $unitUtama->id)
+                ->get();
 
             foreach ($otherUnits as $ou) {
                 $newOuHpp = $baseHpp * $ou->nilai_konversi;
@@ -421,7 +335,7 @@ class StockItemController extends Controller
             ]);
 
             if ($request->status_pembayaran == 'Lunas') {
-                $codeKeluar = \App\Models\TransactionCode::where('code', 'OUT-PURCHASE')->first();
+                $codeKeluar = TransactionCode::where('code', 'OUT-PURCHASE')->first();
                 $unitName = $unitUtama->masterUnit->nama;
 
                 Cashflow::create([
@@ -504,6 +418,11 @@ class StockItemController extends Controller
     // Delete a product unit (variant) from inventory
     public function destroyUnit($id)
     {
+        return $this->destroy($id);
+    }
+
+    public function destroy($id)
+    {
         $unit = ProductUnit::findOrFail($id);
 
         // Prevent deletion if used in purchase details
@@ -520,3 +439,4 @@ class StockItemController extends Controller
         return redirect()->back()->with('success', 'Data satuan/stok berhasil dihapus!');
     }
 }
+

@@ -55,7 +55,16 @@
                                 <button @click="editing = true" class="text-slate-400 hover:text-blue-500 transition-colors">
                                     <i class="fas fa-edit text-[10px]"></i>
                                 </button>
-                                <i class="fas fa-box text-slate-300 group-hover:text-primary transition-colors text-xs"></i>
+                                
+                                <form action="{{ route('master-product.destroy', $product->id) }}" method="POST" onsubmit="return confirm('Hapus master barang ini?')" class="inline-block">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-slate-300 hover:text-red-500 transition-colors">
+                                        <i class="fas fa-trash-alt text-[10px]"></i>
+                                    </button>
+                                </form>
+
+                                <i class="fas fa-box text-slate-300 group-hover:text-primary transition-colors text-xs ml-1"></i>
                             </div>
                         </div>
 
@@ -175,9 +184,19 @@
                             </div>
 
                             <div class="flex flex-col items-end gap-2">
-                                <button @click="editing = true" class="text-slate-300 hover:text-blue-500 transition-colors">
-                                    <i class="fas fa-edit text-xs"></i>
-                                </button>
+                                <div class="flex gap-2">
+                                    <button @click="editing = true" class="text-slate-300 hover:text-blue-500 transition-colors">
+                                        <i class="fas fa-edit text-xs"></i>
+                                    </button>
+                                    
+                                    <form action="{{ route('supplier.destroy', $supplier->id) }}" method="POST" onsubmit="return confirm('Hapus supplier ini?')" class="inline-block">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-slate-300 hover:text-red-500 transition-colors">
+                                            <i class="fas fa-trash-alt text-xs"></i>
+                                        </button>
+                                    </form>
+                                </div>
                                 <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                                     <i class="fas fa-building text-xs"></i>
                                 </div>

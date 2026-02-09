@@ -7,32 +7,21 @@
 @endsection
 
 @section('header-right')
-    <div class="flex items-center gap-3" x-data> 
-        <div class="relative w-64">
+    <div class="flex items-center gap-3"> 
+        <form action="{{ route('stok.index') }}" method="GET" class="relative w-64 text-slate-400 focus-within:text-slate-600 transition-colors">
             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i class="fas fa-search text-slate-300"></i>
+                <i class="fas fa-search"></i>
             </span>
             <input type="text" 
-                   @input.debounce.300ms="$dispatch('search-stok', $el.value)"
+                   name="search"
+                   value="{{ request('search') }}"
                    class="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-full text-sm focus:ring-2 focus:ring-slate-200 focus:bg-white transition-all placeholder-slate-400" 
-                   placeholder="Cari stok...">
-        </div>
+                   placeholder="Cari & Tekan Enter...">
+        </form>
 
-        <button @click="$dispatch('open-manage-modal')" class="px-4 py-2 rounded-lg border border-orange-200 text-primary bg-white text-xs font-bold hover:bg-orange-50 transition-all flex items-center gap-2">
-            <i class="fas fa-tag"></i> KELOLA BARANG
-        </button>
-
-        <button @click="$dispatch('open-unit-modal')" class="px-4 py-2 rounded-lg border border-teal-200 text-teal-600 bg-white text-xs font-bold hover:bg-teal-50 transition-all flex items-center gap-2">
-            <i class="fas fa-ruler"></i> KELOLA SATUAN
-        </button>
-
-        <button @click="$dispatch('open-supplier-modal')" class="px-4 py-2 rounded-lg bg-slate-800 text-white text-xs font-bold hover:bg-slate-700 transition-all flex items-center gap-2">
-            <i class="fas fa-truck"></i> SUPPLIER
-        </button>
-
-        <button @click="$dispatch('open-history-modal')" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-all flex items-center gap-2">
+        <a href="{{ route('purchase.index') }}" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-all flex items-center gap-2">
             <i class="fas fa-history"></i> HISTORY
-        </button>
+        </a>
 
         <button @click="$dispatch('open-add-stock-modal')" class="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-500/30 flex items-center gap-2">
             <i class="fas fa-plus"></i> BELANJA STOK
@@ -44,9 +33,6 @@
 
     {{-- UPDATE 1: Menambahkan 'target_unit' di x-data agar Modal bisa membacanya --}}
     <div x-data="{ 
-            showManageModal: false, 
-            showUnitModal: false,
-            showSupplierModal: false,
             showAddStockModal: false,
             showBreakModal: false,
             showHistoryModal: false,
@@ -72,9 +58,6 @@
             showImageModal: false,
             imageSrc: ''
          }"
-         @open-manage-modal.window="showManageModal = true"
-         @open-unit-modal.window="showUnitModal = true"
-         @open-supplier-modal.window="showSupplierModal = true"
          @open-add-stock-modal.window="showAddStockModal = true"
          @open-history-modal.window="showHistoryModal = true"
          @search-stok.window="searchQuery = $event.detail"
@@ -171,9 +154,7 @@
                             $targetMasterUnitId = $baseUnit ? $baseUnit->master_unit_id : '';
                         @endphp
 
-                        <tr x-show="searchQuery === '' || searchQuery.toLowerCase().trim().split(/\s+/).every(word => $el.dataset.nama.includes(word))" 
-                            data-nama="{{ strtolower($item->masterProduct->nama ?? '') }}"
-                            x-data="{ 
+                        <tr x-data="{ 
                                     editing: false, 
                                     hargaJual: {{ $item->harga_jual }}, 
                                     hargaAtas: {{ $item->harga_atas }}, 
@@ -186,13 +167,13 @@
                                     }
                                 }"
                             class="hover:bg-slate-50/80 transition-colors group">
-                            <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->iteration }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-slate-400 font-mono text-xs">{{ ($units->currentPage() - 1) * $units->perPage() + $loop->iteration }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div x-show="!editing">
                                     @if($item->gambar)
                                         <div class="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:scale-110 transition-transform"
                                             @click="$dispatch('open-image-modal', '{{ asset($item->gambar) }}')">
-                                            <img src="{{ asset($item->gambar) }}" class="w-full h-full object-cover">
+                                            <img src="{{ asset($item->gambar) }}" loading="lazy" class="w-full h-full object-cover">
                                         </div>
                                     @else
                                         <div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-100">
@@ -379,16 +360,16 @@
                     </tbody>
                 </table>
             </div>
+            
+            @if($units->hasPages())
+                <div class="p-6 border-t border-slate-100 bg-slate-50/50">
+                    {{ $units->links() }}
+                </div>
+            @endif
         </div>
-
-        {{-- MODAL KELOLA BARANG & SUPPLIER --}}
-        @include('stock.partials.modals_master') 
 
         {{-- MODAL BELANJA STOK --}}
         <div x-show="showAddStockModal"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
              class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
              style="display: none;">
 
@@ -747,118 +728,6 @@
                             <i class="fas fa-exchange-alt mr-2"></i> PROSES KONVERSI
                         </button>
                     </form>
-                </div>
-            </div>
-        </div>
-
-        {{-- MODAL HISTORY BELANJA --}}
-        <div x-show="showHistoryModal"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             style="display: none;"
-             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            
-            <div @click.away="showHistoryModal = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
-                <div class="bg-indigo-600 px-6 py-4 flex items-center justify-between">
-                    <h3 class="text-white font-bold text-sm tracking-wide flex items-center gap-2">
-                        <i class="fas fa-history"></i> HISTORY BELANJA / KULAKAN
-                    </h3>
-                    <button @click="showHistoryModal = false" class="text-indigo-200 hover:text-white"><i class="fas fa-times"></i></button>
-                </div>
-
-                <div class="p-6 overflow-y-auto custom-scrollbar">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200">
-                                    <th class="px-4 py-3 whitespace-nowrap">No</th>
-                                    <th class="px-4 py-3 whitespace-nowrap">Tanggal</th>
-                                    <th class="px-4 py-3 whitespace-nowrap">No. Resi</th>
-                                    <th class="px-4 py-3 whitespace-nowrap">Supplier</th>
-                                    <th class="px-4 py-3 whitespace-nowrap">Barang</th>
-                                    <th class="px-4 py-3 whitespace-nowrap text-center">Qty</th>
-                                    <th class="px-4 py-3 whitespace-nowrap">Harga Satuan</th>
-                                    <th class="px-4 py-3 whitespace-nowrap">Total</th>
-                                    <th class="px-4 py-3 whitespace-nowrap text-center">Status</th>
-                                    <th class="px-4 py-3 whitespace-nowrap">Jatuh Tempo</th>
-                                    <th class="px-4 py-3 whitespace-nowrap text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
-                                @forelse($purchases as $purchase)
-                                    @foreach($purchase->purchaseDetails as $detail)
-                                    <tr class="hover:bg-slate-50/80 transition-colors">
-                                        <td class="px-4 py-3 whitespace-nowrap text-slate-400 font-mono text-xs">{{ $loop->parent->iteration }}.{{ $loop->iteration }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-xs">{{ \Carbon\Carbon::parse($purchase->tanggal)->format('d/m/Y') }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap font-mono text-xs text-indigo-600">{{ $purchase->nomor_resi }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap font-bold">{{ $purchase->supplier->nama ?? '-' }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
-                                            <span class="font-bold">{{ $detail->productUnit->masterProduct->nama ?? '-' }}</span>
-                                            <span class="text-xs text-slate-400">({{ $detail->productUnit->masterUnit->nama ?? '-' }})</span>
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-center font-bold">{{ $detail->qty }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap">Rp {{ number_format($detail->harga_beli_satuan, 0, ',', '.') }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap font-bold text-slate-800">Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-center">
-                                            @if($purchase->status_pembayaran == 'Lunas')
-                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-green-50 text-green-600 border border-green-100">
-                                                    <i class="fas fa-check-circle"></i> Lunas
-                                                </span>
-                                            @else
-                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">
-                                                    <i class="fas fa-clock"></i> Belum Lunas
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-xs text-center font-bold">
-                                            {{ $purchase->status_pembayaran == 'Lunas' ? '-' : ($purchase->jatuh_tempo ? \Carbon\Carbon::parse($purchase->jatuh_tempo)->format('d/m/Y') : '-') }}
-                                        </td>
-                                        <td class="px-4 py-3 whitespace-nowrap text-center">
-                                            @if($purchase->status_pembayaran == 'Belum Lunas')
-                                                <form action="{{ route('purchase.pay', $purchase->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin melunasi transaksi ini secara manual?')">
-                                                    @csrf
-                                                    @method('PUT')
-                                                    <button type="submit" class="p-1 px-2 bg-green-500 text-white rounded text-[10px] font-bold hover:bg-green-600 transition-all flex items-center gap-1 mx-auto">
-                                                        <i class="fas fa-hand-holding-usd"></i> LUNAS
-                                                    </button>
-                                                </form>
-                                            @else
-                                                <span class="text-slate-300"><i class="fas fa-check-double text-xs"></i></span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                @empty
-                                <tr>
-                                    <td colspan="11" class="px-4 py-10 text-center text-slate-400">Belum ada history pembelian.</td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {{-- Summary --}}
-                    @if($purchases->count() > 0)
-                    <div class="mt-6 grid grid-cols-3 gap-4">
-                        <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                            <p class="text-[10px] font-bold text-indigo-400 uppercase">Total Transaksi</p>
-                            <p class="text-xl font-bold text-indigo-600">{{ $purchases->count() }}</p>
-                        </div>
-                        <div class="bg-green-50 p-4 rounded-xl border border-green-100">
-                            <p class="text-[10px] font-bold text-green-400 uppercase">Total Lunas</p>
-                            <p class="text-xl font-bold text-green-600">Rp {{ number_format($purchases->where('status_pembayaran', 'Lunas')->sum('total_nominal'), 0, ',', '.') }}</p>
-                        </div>
-                        <div class="bg-red-50 p-4 rounded-xl border border-red-100">
-                            <p class="text-[10px] font-bold text-red-400 uppercase">Total Hutang</p>
-                            <p class="text-xl font-bold text-red-600">Rp {{ number_format($purchases->where('status_pembayaran', 'Belum Lunas')->sum('total_nominal'), 0, ',', '.') }}</p>
-                        </div>
-                    </div>
-                    @endif
-                </div>
-
-                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                    <button @click="showHistoryModal = false" class="px-5 py-2.5 rounded-lg text-slate-500 font-bold text-sm hover:bg-slate-200 transition-all">Tutup</button>
                 </div>
             </div>
         </div>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\StockItemController;
+use App\Http\Controllers\PurchaseController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
@@ -27,17 +28,18 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('/master-data', [App\Http\Controllers\MasterDataController::class, 'index'])->name('master.index');
 
-    Route::post('/master-product', [StockItemController::class, 'storeMasterProduct'])->name('master-product.store');
-    Route::put('/master-product/{id}', [StockItemController::class, 'updateMasterProduct'])->name('master-product.update');
-    Route::delete('/master-product/{id}', [StockItemController::class, 'destroyMasterProduct'])->name('master-product.destroy');
-    Route::post('/master-unit', [StockItemController::class, 'storeMasterUnit'])->name('master-unit.store');
-    Route::put('/master-unit/{id}', [StockItemController::class, 'updateMasterUnit'])->name('master-unit.update');
-    Route::delete('/master-unit/{id}', [StockItemController::class, 'destroyMasterUnit'])->name('master-unit.destroy');
+    Route::post('/master-product', [App\Http\Controllers\MasterDataController::class, 'storeMasterProduct'])->name('master-product.store');
+    Route::put('/master-product/{id}', [App\Http\Controllers\MasterDataController::class, 'updateMasterProduct'])->name('master-product.update');
+    Route::delete('/master-product/{id}', [App\Http\Controllers\MasterDataController::class, 'destroyMasterProduct'])->name('master-product.destroy');
+    Route::post('/master-unit', [App\Http\Controllers\MasterDataController::class, 'storeMasterUnit'])->name('master-unit.store');
+    Route::put('/master-unit/{id}', [App\Http\Controllers\MasterDataController::class, 'updateMasterUnit'])->name('master-unit.update');
+    Route::delete('/master-unit/{id}', [App\Http\Controllers\MasterDataController::class, 'destroyMasterUnit'])->name('master-unit.destroy');
 
-    Route::post('/supplier', [StockItemController::class, 'storeSupplier'])->name('supplier.store');
-    Route::put('/supplier/{id}', [StockItemController::class, 'updateSupplier'])->name('supplier.update');
-    Route::delete('/supplier/{id}', [StockItemController::class, 'destroySupplier'])->name('supplier.destroy');
+    Route::post('/supplier', [App\Http\Controllers\MasterDataController::class, 'storeSupplier'])->name('supplier.store');
+    Route::put('/supplier/{id}', [App\Http\Controllers\MasterDataController::class, 'updateSupplier'])->name('supplier.update');
+    Route::delete('/supplier/{id}', [App\Http\Controllers\MasterDataController::class, 'destroySupplier'])->name('supplier.destroy');
 
     Route::get('/stok', [StockItemController::class, 'index'])->name('stok.index');
     Route::get('/stok/{id}', [StockItemController::class, 'show'])->name('stok.show');
@@ -46,7 +48,9 @@ Route::middleware(['auth'])->group(function () {
     // Delete product unit (from inventory row)
     Route::delete('/stok/{id}/destroy-unit', [StockItemController::class, 'destroyUnit'])->name('stok.destroy_unit');
     Route::post('/stok/break', [StockItemController::class, 'breakUnit'])->name('stok.break');
-    Route::put('/pembelian/{id}/pay', [StockItemController::class, 'markAsPaid'])->name('purchase.pay');
+
+    Route::get('/pembelian', [PurchaseController::class, 'index'])->name('purchase.index');
+    Route::put('/pembelian/{id}/pay', [PurchaseController::class, 'markAsPaid'])->name('purchase.pay');
 
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('/pos/process', [PosController::class, 'process'])->name('pos.process');

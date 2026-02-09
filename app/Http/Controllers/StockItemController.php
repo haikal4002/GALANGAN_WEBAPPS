@@ -39,7 +39,12 @@ class StockItemController extends Controller
 
         if ($search) {
             $query->whereHas('masterProduct', function ($q) use ($search) {
-                $q->where('nama', 'like', '%' . $search . '%');
+                $keywords = explode(' ', $search);
+                foreach ($keywords as $keyword) {
+                    if (trim($keyword) !== '') {
+                        $q->where('nama', 'like', '%' . trim($keyword) . '%');
+                    }
+                }
             });
         }
 

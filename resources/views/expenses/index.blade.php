@@ -271,10 +271,8 @@
 
                     <div class="mb-4">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Kategori</label>
-                        <select name="kategori" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500" required>
-                            <option value="pemasukan">Pemasukan</option>
-                            <option value="pengeluaran" selected>Pengeluaran</option>
-                        </select>
+                        <input type="hidden" name="kategori" value="pengeluaran">
+                        <div class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50 text-slate-700">Pengeluaran</div>
                     </div>
 
                     {{-- Pilihan Warna --}}

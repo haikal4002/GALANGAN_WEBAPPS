@@ -127,4 +127,35 @@ class PosController extends Controller
             ], 400);
         }
     }
+
+    public function history(Request $request)
+    {
+        // Ambil 50 transaksi terakhir beserta item dan user
+        $transactions = PosTransaction::with(['items.productUnit.masterProduct', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->take(50)
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'no_trx' => $t->no_trx,
+                    'user' => $t->user->name ?? null,
+                    'total_amount' => $t->total_amount,
+                    'created_at' => $t->created_at,
+                    'items' => $t->items->map(function ($it) {
+                        return [
+                            'name' => $it->productUnit->masterProduct->nama ?? 'Unknown',
+                            'qty' => $it->qty,
+                            'harga_satuan' => $it->harga_satuan,
+                            'subtotal' => $it->subtotal,
+                        ];
+                    }),
+                ];
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $transactions
+        ]);
+    }
 }

@@ -54,6 +54,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('/pos/process', [PosController::class, 'process'])->name('pos.process');
+    Route::get('/pos/history', [PosController::class, 'history'])->name('pos.history');
 
     Route::get('/laporan', [ReportController::class, 'index'])->name('report.index');
     Route::get('/laporan/export', [ReportController::class, 'export'])->name('report.export');

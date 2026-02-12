@@ -102,7 +102,7 @@
                                     </button>
                                 </form>
                             @else
-                                <span class="text-emerald-500"><i class="fas fa-check-double"></i></span>
+                                <span class="text-emerald-500"><i class="fas fa-check-double"></i> Lunas</span>
                             @endif
                         </td>
                     </tr>

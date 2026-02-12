@@ -71,7 +71,10 @@
                     <i class="fas fa-shopping-basket text-primary"></i>
                     <h3 class="font-bold text-slate-800">KERANJANG</h3>
                 </div>
-                <span class="px-2 py-1 bg-primary text-white text-xs font-bold rounded-lg" x-text="cartTotalItems + ' ITEM'"></span>
+                <div class="flex items-center gap-2">
+                    <button @click="openHistoryModal()" class="text-xs px-3 py-1 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 flex items-center gap-2"><i class="fas fa-history"></i> HISTORY</button>
+                    <span class="px-2 py-1 bg-primary text-white text-xs font-bold rounded-lg" x-text="cartTotalItems + ' ITEM'"></span>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
@@ -279,6 +282,55 @@
         </div>
     </div>
 
+    {{-- 4. MODAL HISTORY TRANSAKSI POS --}}
+    <div x-show="showHistoryModal" style="display: none;" class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm" x-transition.opacity>
+        <div @click.away="showHistoryModal = false" class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-slate-800 font-bold text-lg">HISTORY TRANSAKSI</h3>
+                <button @click="showHistoryModal = false" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+            </div>
+            <div class="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <div x-show="isHistoryLoading" class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-slate-500"></i>
+                    <p class="text-xs text-slate-400 mt-2">Memuat...</p>
+                </div>
+                <div x-show="!isHistoryLoading">
+                    <template x-if="history.length === 0">
+                        <div class="text-center text-slate-400 italic">Belum ada history transaksi.</div>
+                    </template>
+                    <template x-for="trx in history" :key="trx.id">
+                        <div class="border rounded-lg p-3 mb-3 flex justify-between items-center">
+                            <div>
+                                <div class="text-sm font-bold text-slate-800" x-text="trx.no_trx"></div>
+                                <div class="text-xs text-slate-500" x-text="new Date(trx.created_at).toLocaleString('id-ID') + ' • Kasir: ' + (trx.user || '-')"></div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="text-sm font-bold text-slate-700" x-text="formatRupiah(trx.total_amount)"></div>
+                                <button @click="selectedHistory = trx" class="py-2 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold">DETAIL</button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div x-show="selectedHistory" class="mt-4 border-t pt-4">
+                        <div class="text-xs text-slate-400 mb-2">Detail: <span class="font-bold" x-text="selectedHistory.no_trx"></span></div>
+                        <template x-for="it in selectedHistory.items" :key="it.name+it.qty">
+                            <div class="flex justify-between items-center text-sm py-1">
+                                <div>
+                                    <div class="font-bold" x-text="it.name"></div>
+                                    <div class="text-xs text-slate-500" x-text="it.qty + ' x ' + formatRupiah(it.harga_satuan)"></div>
+                                </div>
+                                <div class="font-bold" x-text="formatRupiah(it.subtotal)"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-100 bg-slate-50 text-right">
+                <button @click="showHistoryModal = false" class="py-2 px-4 bg-slate-200 rounded-lg text-sm font-bold">TUTUP</button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -293,6 +345,11 @@
             showPaymentModal: false,
             showSuccessModal: false, // Modal Sukses
             showReceiptModal: false, // Modal Nota
+            // History Modal
+            showHistoryModal: false,
+            history: [],
+            isHistoryLoading: false,
+            selectedHistory: null,
 
             // Transaction Data
             paymentMethod: 'cash',
@@ -428,6 +485,28 @@
                     alert('GAGAL MEMPROSES TRANSAKSI:\n' + error.message);
                 } finally {
                     this.isLoading = false;
+                }
+            },
+
+            // --- HISTORY ---
+            openHistoryModal() {
+                this.showHistoryModal = true;
+                this.selectedHistory = null;
+                this.loadHistory();
+            },
+
+            async loadHistory() {
+                this.isHistoryLoading = true;
+                try {
+                    const res = await fetch('{{ route("pos.history") }}');
+                    const json = await res.json();
+                    if (!res.ok) throw new Error(json.message || 'Gagal memuat history');
+                    this.history = json.data || [];
+                } catch (e) {
+                    console.error(e);
+                    alert('Gagal memuat history: ' + e.message);
+                } finally {
+                    this.isHistoryLoading = false;
                 }
             },
 

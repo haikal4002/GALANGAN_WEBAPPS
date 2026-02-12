@@ -101,7 +101,7 @@
                    {{ request()->routeIs('purchase.*') ? 'bg-white text-primary shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}"
                    :class="sidebarOpen ? 'px-4 py-3' : 'p-3 justify-center'">
                     <i class="fas fa-history w-6 text-center text-lg {{ request()->routeIs('purchase.*') ? '' : 'group-hover:text-primary transition-colors' }}" :class="sidebarOpen && 'mr-2'"></i>
-                    <span x-show="sidebarOpen" x-transition.opacity class="{{ request()->routeIs('purchase.*') ? 'font-bold' : 'font-medium' }} text-sm whitespace-nowrap">History Belanja</span>
+                    <span x-show="sidebarOpen" x-transition.opacity class="{{ request()->routeIs('purchase.*') ? 'font-bold' : 'font-medium' }} text-sm whitespace-nowrap">History Kulakan</span>
                     @if(request()->routeIs('purchase.*'))
                         <div x-show="sidebarOpen" class="ml-auto w-2 h-2 bg-primary rounded-full"></div>
                     @endif

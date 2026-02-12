@@ -72,7 +72,7 @@
                     <h3 class="font-bold text-slate-800">KERANJANG</h3>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button @click="openHistoryModal()" class="text-xs px-3 py-1 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 flex items-center gap-2"><i class="fas fa-history"></i> HISTORY</button>
+                    <a href="{{ route('pos.history.view') }}" class="text-xs px-3 py-1 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 flex items-center gap-2"><i class="fas fa-history"></i> HISTORY</a>
                     <span class="px-2 py-1 bg-primary text-white text-xs font-bold rounded-lg" x-text="cartTotalItems + ' ITEM'"></span>
                 </div>
             </div>

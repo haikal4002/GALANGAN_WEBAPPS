@@ -44,8 +44,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/stok', [StockItemController::class, 'index'])->name('stok.index');
     Route::get('/stok/{id}', [StockItemController::class, 'show'])->name('stok.show');
     Route::put('/stok/{id}/update', [StockItemController::class, 'updateItem'])->name('stok.update-price');
-    // Inline update from inventory table: satuan, stok, hpp (handled via main update form now)
-    // Delete product unit (from inventory row)
+
     Route::delete('/stok/{id}/destroy-unit', [StockItemController::class, 'destroyUnit'])->name('stok.destroy_unit');
     Route::post('/stok/break', [StockItemController::class, 'breakUnit'])->name('stok.break');
 
@@ -54,7 +53,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('/pos/process', [PosController::class, 'process'])->name('pos.process');
+    // Page to view and filter history (opens dedicated page)
+    Route::get('/pos/history/view', [PosController::class, 'historyPage'])->name('pos.history.view');
+    // JSON endpoint used by frontend to fetch transactions (supports ?start=YYYY-MM-DD&end=YYYY-MM-DD)
     Route::get('/pos/history', [PosController::class, 'history'])->name('pos.history');
+    // JSON detail endpoint for modal
+    Route::get('/pos/history/{id}/detail', [PosController::class, 'detail'])->name('pos.history.detail');
 
     Route::get('/laporan', [ReportController::class, 'index'])->name('report.index');
     Route::get('/laporan/export', [ReportController::class, 'export'])->name('report.export');

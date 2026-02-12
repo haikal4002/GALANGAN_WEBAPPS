@@ -98,16 +98,6 @@ class PosController extends Controller
                     ]);
                 }
 
-                // 5. Catat Cashflow Masuk (Otomatis)
-                $codeMasuk = TransactionCode::where('code', 'IN-SALES')->first();
-                Cashflow::create([
-                    'tanggal' => Carbon::now(),
-                    'transaction_code_id' => $codeMasuk ? $codeMasuk->id : 1, // Default ID 1 jika code tidak ada
-                    'keterangan' => "Penjualan POS " . $noTrx,
-                    'debit' => $totalAmount, // Uang Masuk
-                    'kredit' => 0,
-                ]);
-
                 return $trx;
             });
 
@@ -130,10 +120,21 @@ class PosController extends Controller
 
     public function history(Request $request)
     {
-        // Ambil 50 transaksi terakhir beserta item dan user
-        $transactions = PosTransaction::with(['items.productUnit.masterProduct', 'user'])
-            ->orderBy('created_at', 'desc')
-            ->take(50)
+        // Dukung filter tanggal (start, end), format YYYY-MM-DD
+        $start = $request->query('start');
+        $end = $request->query('end');
+
+        $query = PosTransaction::with(['items.productUnit.masterProduct', 'user']);
+
+        if ($start) {
+            $query->whereDate('created_at', '>=', $start);
+        }
+        if ($end) {
+            $query->whereDate('created_at', '<=', $end);
+        }
+
+        $transactions = $query->orderBy('created_at', 'desc')
+            ->limit(200)
             ->get()
             ->map(function ($t) {
                 return [
@@ -158,4 +159,62 @@ class PosController extends Controller
             'data' => $transactions
         ]);
     }
+
+    // Tampilan halaman history (HTML)
+    public function historyPage(Request $request)
+    {
+        // Support export CSV via ?export=csv&start=...&end=...
+        if ($request->query('export') === 'csv') {
+            $start = $request->query('start');
+            $end = $request->query('end');
+
+            $query = PosTransaction::query();
+            if ($start)
+                $query->whereDate('created_at', '>=', $start);
+            if ($end)
+                $query->whereDate('created_at', '<=', $end);
+
+            $rows = $query->orderBy('created_at', 'desc')->get();
+
+            $csv = "no_trx,tanggal,kasir,total_amount\n";
+            foreach ($rows as $r) {
+                $csv .= sprintf("%s,%s,%s,%s\n", $r->no_trx, $r->created_at->toDateTimeString(), $r->user->name ?? '-', $r->total_amount);
+            }
+
+            return response($csv, 200, [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="pos_history_export.csv"'
+            ]);
+        }
+
+        return view('pos.history');
+    }
+
+    // JSON detail endpoint untuk modal
+    public function detail($id)
+    {
+        $t = PosTransaction::with(['items.productUnit.masterProduct', 'user'])->findOrFail($id);
+        $data = [
+            'id' => $t->id,
+            'no_trx' => $t->no_trx,
+            'user' => $t->user->name ?? null,
+            'total_amount' => $t->total_amount,
+            'created_at' => $t->created_at,
+            'items' => $t->items->map(function ($it) {
+                return [
+                    'name' => $it->productUnit->masterProduct->nama ?? 'Unknown',
+                    'qty' => $it->qty,
+                    'harga_satuan' => $it->harga_satuan,
+                    'subtotal' => $it->subtotal,
+                ];
+            }),
+        ];
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $data
+        ]);
+    }
+
+
 }

@@ -10,7 +10,7 @@
 
 <div class="p-6">
     <div class="mb-4 flex items-center gap-3">
-        <a href="{{ route('pos.index') }}" class="py-2 px-4 bg-slate-200 rounded font-bold text-sm">KEMBALI KE POS</a>
+        <a href="{{ route('pos.index') }}" class="py-2 px-4 bg-slate-200 rounded font-bold text-sm">< KEMBALI KE POS</a>
         <input type="date" id="start_date" class="border p-2 rounded">
         <span class="text-xs text-slate-400">sampai</span>
         <input type="date" id="end_date" class="border p-2 rounded">

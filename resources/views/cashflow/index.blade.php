@@ -193,7 +193,9 @@
                     <tbody class="text-xs text-slate-600 divide-y divide-slate-100">
                         @forelse($cashflows as $cf)
                         <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="px-6 py-4 text-slate-400 font-mono">{{ $loop->iteration }}</td>
+                            <td class="px-6 py-4 text-slate-400 font-mono">
+                                {{ ($cashflows->currentPage() - 1) * $cashflows->perPage() + $loop->iteration }}
+                            </td>
                             <td class="px-6 py-4 font-bold">{{ \Carbon\Carbon::parse($cf->tanggal)->format('Y-m-d') }}</td>
                             <td class="px-6 py-4 text-center">
                                 @php $badgeColor = $colorMap[$cf->transactionCode->color ?? 'slate'] ?? ($cf->transactionCode->color ?? 'slate'); @endphp
@@ -256,6 +258,10 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+            {{-- PAGINATION --}}
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100">
+                {{ $cashflows->links() }}
             </div>
         </div>
 

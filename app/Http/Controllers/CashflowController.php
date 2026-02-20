@@ -49,18 +49,19 @@ class CashflowController extends Controller
             $cashflowsQuery->where('keterangan', 'like', '%' . $searchQuery . '%');
         }
 
-        // ambil data (limit 100) sesuai order yang diminta
+        // ambil data (paginate) sesuai order yang diminta
         $cashflows = $cashflowsQuery
             ->orderBy('tanggal', $order)
             ->orderBy('id', $order)
-            ->limit(100)
-            ->get();
+            ->paginate(50)
+            ->withQueryString();
 
         // LOGIKA SALDO BERJALAN (Running Balance) untuk Tabel
         // Hitung saldo berjalan dengan akurat baik saat menampilkan ascending maupun descending.
         if ($cashflows->isNotEmpty()) {
             // Urutkan koleksi secara kronologis (oldest -> newest)
-            $chron = $cashflows->sortBy(function ($item) {
+            $items = $cashflows->getCollection();
+            $chron = $items->sortBy(function ($item) {
                 return $item->tanggal . '-' . $item->id;
             })->values();
 
@@ -92,13 +93,6 @@ class CashflowController extends Controller
             foreach ($chron as $cf) {
                 $running += ($cf->debit - $cf->kredit);
                 $cf->saldo_berjalan = $running;
-            }
-
-            // Siapkan koleksi akhir sesuai urutan yang diminta pengguna
-            if ($order === 'asc') {
-                $cashflows = $chron->values();
-            } else {
-                $cashflows = $chron->reverse()->values();
             }
         }
 

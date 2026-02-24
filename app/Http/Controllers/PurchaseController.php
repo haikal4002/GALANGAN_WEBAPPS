@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $purchases = Purchase::with([
+        $search = $request->query('q');
+
+        $query = Purchase::with([
             'supplier:id,nama',
             'purchaseDetails' => function ($query) {
                 $query->select('id', 'purchase_id', 'product_unit_id', 'qty', 'harga_beli_satuan', 'subtotal');
@@ -21,10 +23,24 @@ class PurchaseController extends Controller
             'purchaseDetails.productUnit.masterProduct:id,nama',
             'purchaseDetails.productUnit.masterUnit:id,nama'
         ])
-            ->select('id', 'supplier_id', 'nomor_resi', 'tanggal', 'total_nominal', 'status_pembayaran', 'jatuh_tempo', 'created_at')
-            ->orderBy('tanggal', 'desc')
+            ->select('id', 'supplier_id', 'nomor_resi', 'tanggal', 'total_nominal', 'status_pembayaran', 'jatuh_tempo', 'created_at');
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nomor_resi', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($sq) use ($search) {
+                        $sq->where('nama', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('purchaseDetails.productUnit.masterProduct', function ($pq) use ($search) {
+                        $pq->where('nama', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $purchases = $query->orderBy('tanggal', 'desc')
             ->orderBy('created_at', 'desc')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return view('purchase.index', compact('purchases'));
     }

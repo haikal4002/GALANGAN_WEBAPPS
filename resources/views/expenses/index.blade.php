@@ -196,7 +196,9 @@
                 <tbody class="text-xs text-slate-600 divide-y divide-slate-100">
                     @forelse($expenses as $exp)
                     <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-4 text-slate-400 font-mono">{{ $loop->iteration }}</td>
+                        <td class="px-6 py-4 text-slate-400 font-mono">
+                            {{ ($expenses->currentPage() - 1) * $expenses->perPage() + $loop->iteration }}
+                        </td>
                         <td class="px-6 py-4 font-bold">{{ \Carbon\Carbon::parse($exp->tanggal)->format('d/m/Y') }}</td>
                         <td class="px-6 py-4 text-center">
                             @php $expColor = $colorMap[$exp->transactionCode->color ?? 'slate'] ?? ($exp->transactionCode->color ?? 'slate'); @endphp
@@ -237,6 +239,12 @@
                 </tbody>
             </table>
         </div>
+        {{-- PAGINATION --}}
+        @if($expenses->hasPages())
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100">
+            {{ $expenses->links() }}
+        </div>
+        @endif
     </div>
 
     {{-- 4. MODAL KELOLA KODE TRANSAKSI --}}

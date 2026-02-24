@@ -6,6 +6,10 @@
     <i class="fas fa-file-invoice-dollar text-primary mr-2"></i> REPORT VIEW
 @endsection
 
+@section('header-right')
+    {{-- Search bar top header dikosongkan karena sudah ada filter di dalam konten --}}
+@endsection
+
 @section('content')
 
 <div class="space-y-8">
@@ -19,7 +23,17 @@
             <p class="text-slate-400 text-xs mt-1 uppercase tracking-wider">Analisis Performa Bulanan Toko</p>
         </div>
 
-        <form action="{{ route('report.index') }}" method="GET" class="flex items-center gap-3">
+        <form action="{{ route('report.index') }}" method="GET" class="flex flex-col md:flex-row items-center gap-3">
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-500 text-xs"></i>
+                </span>
+                <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari Nama Barang..." 
+                       class="pl-9 pr-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all w-full md:w-48">
+                <input type="hidden" name="month" value="{{ $month }}">
+                <input type="hidden" name="year" value="{{ $year }}">
+            </div>
+
             <a href="{{ route('report.export', ['year' => $year]) }}" 
                class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase transition-all flex items-center gap-2">
                 <i class="fas fa-file-excel"></i> Export Excel {{ $year }}
@@ -27,7 +41,7 @@
             
             <div class="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-600">
                 {{-- Tombol Previous Month --}}
-                <a href="{{ route('report.index', ['month' => $month == 1 ? 12 : $month - 1, 'year' => $month == 1 ? $year - 1 : $year]) }}" 
+                <a href="{{ route('report.index', ['month' => $month == 1 ? 12 : $month - 1, 'year' => $month == 1 ? $year - 1 : $year, 'q' => request('q')]) }}" 
                    class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-all">
                     <i class="fas fa-chevron-left"></i>
                 </a>
@@ -38,7 +52,7 @@
                 </span>
 
                 {{-- Tombol Next Month --}}
-                <a href="{{ route('report.index', ['month' => $month == 12 ? 1 : $month + 1, 'year' => $month == 12 ? $year + 1 : $year]) }}" 
+                <a href="{{ route('report.index', ['month' => $month == 12 ? 1 : $month + 1, 'year' => $month == 12 ? $year + 1 : $year, 'q' => request('q')]) }}" 
                    class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-all">
                     <i class="fas fa-chevron-right"></i>
                 </a>

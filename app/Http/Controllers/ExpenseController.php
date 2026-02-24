@@ -42,8 +42,8 @@ class ExpenseController extends Controller
         $expenses = $expensesQuery
             ->orderBy('tanggal', $order = (strtolower($request->query('order', 'desc')) === 'asc' ? 'asc' : 'desc'))
             ->orderBy('id', $order)
-            ->limit(50)
-            ->get();
+            ->paginate(50)
+            ->withQueryString();
 
         // 3. Ambil Daftar Kode Transaksi untuk Dropdown & Modal (hanya kode insidentil & kategori pengeluaran)
         $codes = TransactionCode::where('kategori', 'pengeluaran')

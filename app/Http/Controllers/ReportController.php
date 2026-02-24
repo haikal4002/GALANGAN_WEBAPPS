@@ -19,6 +19,7 @@ class ReportController extends Controller
         // 1. Tentukan Bulan Laporan (Default: Bulan Ini)
         $month = $request->get('month', date('m'));
         $year = $request->get('year', date('Y'));
+        $search = $request->get('q');
 
         $currentDate = Carbon::createFromDate($year, $month, 1);
         $monthName = $currentDate->translatedFormat('F Y');
@@ -28,10 +29,17 @@ class ReportController extends Controller
         // ==========================================
 
         // Ambil semua item yang terjual di bulan ini
-        $salesItems = PosTransactionItem::with(['productUnit.masterProduct', 'productUnit.masterUnit'])
+        $query = PosTransactionItem::with(['productUnit.masterProduct', 'productUnit.masterUnit'])
             ->whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->get();
+            ->whereMonth('created_at', $month);
+
+        if (!empty($search)) {
+            $query->whereHas('productUnit.masterProduct', function ($q) use ($search) {
+                $q->where('nama', 'like', '%' . $search . '%');
+            });
+        }
+
+        $salesItems = $query->get();
 
         // Grouping berdasarkan Product ID untuk menghitung total per barang
         $reportItems = $salesItems->groupBy('product_unit_id')->map(function ($items) {
@@ -93,10 +101,15 @@ class ReportController extends Controller
                 ->sum('kredit');
         }
 
-        // C. Total Modal Barang Terjual (HPP)
-        $totalHPP = $subtotalBarang['modal'];
-
         // D. Net Profit (Laba Bersih)
+        // Hitung total HPP riil tanpa filter search untuk tabelSnapshot agar tetap akurat secara bulanan
+        $realHppTotal = PosTransactionItem::join('product_units', 'pos_transaction_items.product_unit_id', '=', 'product_units.id')
+            ->whereYear('pos_transaction_items.created_at', $year)
+            ->whereMonth('pos_transaction_items.created_at', $month)
+            ->sum(DB::raw('pos_transaction_items.qty * product_units.harga_beli_terakhir'));
+
+        // Gunakan realHppTotal untuk Laporan Keuangan Snapshot agar tidak terpengaruh filter pencarian list barang
+        $totalHPP = $realHppTotal;
         $netProfit = $totalPemasukan - ($totalOperasional + $totalHPP);
 
         return view('report.index', compact(

@@ -6,6 +6,15 @@
     <span class="text-slate-800 font-bold tracking-tight uppercase">HISTORY BELANJA</span>
 @endsection
 
+@section('header-right')
+    <form method="GET" action="{{ route('purchase.index') }}" class="relative hidden md:block">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-search text-slate-400 text-xs"></i>
+        </span>
+        <input name="q" type="text" value="{{ request('q') }}" placeholder="Cari No. Resi, Supplier, atau Barang..." class="w-80 pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder-slate-400">
+    </form>
+@endsection
+
 @section('content')
 <div class="space-y-6">
     {{-- Summary Cards --}}

@@ -36,8 +36,6 @@ class CashflowController extends Controller
             ->sum(DB::raw('debit - kredit'));
 
         // 3. Ambil Data Mutasi (Tabel Utama)
-        // Kita ambil 100 transaksi, hanya tampilkan kode NON-INSIDENTIL
-        // Tambahkan dukungan sorting (asc/desc) berdasarkan parameter `order`
         $order = strtolower($request->query('order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
         $cashflowsQuery = Cashflow::with('transactionCode')
@@ -57,39 +55,30 @@ class CashflowController extends Controller
             ->withQueryString();
 
         // LOGIKA SALDO BERJALAN (Running Balance) untuk Tabel
-        // Hitung saldo berjalan dengan akurat baik saat menampilkan ascending maupun descending.
         if ($cashflows->isNotEmpty()) {
-            // Urutkan koleksi secara kronologis (oldest -> newest)
+            // Urutkan koleksi secara kronologis (oldest -> newest) agar saldo dihitung berurutan
             $items = $cashflows->getCollection();
-            $chron = $items->sortBy(function ($item) {
-                return $item->tanggal . '-' . $item->id;
+            $chron = $items->sort(function ($a, $b) {
+                if ($a->tanggal === $b->tanggal) {
+                    return $a->id <=> $b->id;
+                }
+                return $a->tanggal <=> $b->tanggal;
             })->values();
 
-            // Ambil baris pertama secara kronologis
+            // Ambil baris pertama secara kronologis di halaman ini
             $firstChron = $chron->first();
 
-            // Hitung saldo sebelum transaksi pertama yang ditampilkan (menggunakan query dasar tanpa order/limit)
-            $beforeQuery = (clone $cashflowsQuery);
-            $debitBefore = $beforeQuery->where(function ($q) use ($firstChron) {
+            // Hitung saldo awal riil sebelum transaksi pertama di halaman ini.
+            // Gunakan query bersih tanpa filter list agar saldo mencerminkan kondisi kas sebenarnya.
+            $running = Cashflow::where(function ($q) use ($firstChron) {
                 $q->where('tanggal', '<', $firstChron->tanggal)
                     ->orWhere(function ($q2) use ($firstChron) {
                         $q2->where('tanggal', $firstChron->tanggal)
                             ->where('id', '<', $firstChron->id);
                     });
-            })->sum('debit');
+            })->sum(DB::raw('debit - kredit'));
 
-            $beforeQuery = (clone $cashflowsQuery);
-            $kreditBefore = $beforeQuery->where(function ($q) use ($firstChron) {
-                $q->where('tanggal', '<', $firstChron->tanggal)
-                    ->orWhere(function ($q2) use ($firstChron) {
-                        $q2->where('tanggal', $firstChron->tanggal)
-                            ->where('id', '<', $firstChron->id);
-                    });
-            })->sum('kredit');
-
-            $running = $debitBefore - $kreditBefore;
-
-            // Hitung saldo berjalan dari kronologis terawal ke terkini
+            // Hitung saldo berjalan akumulatif untuk item di halaman ini
             foreach ($chron as $cf) {
                 $running += ($cf->debit - $cf->kredit);
                 $cf->saldo_berjalan = $running;
